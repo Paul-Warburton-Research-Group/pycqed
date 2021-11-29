@@ -1,0 +1,3 @@
+include versioneer.py
+include pycqed/_version.py
+include pycqed/src/_version.py

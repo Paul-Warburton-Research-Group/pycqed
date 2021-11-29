@@ -1,0 +1,2331 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Indices and tables &#8212; PyCQED v0.11 documentation</title>
+    <link rel="stylesheet" href="_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">PyCQED v0.11 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Indices and tables</a></li>
+<li><a class="reference internal" href="#circuit-qed-primer">Circuit QED Primer</a></li>
+<li><a class="reference internal" href="#transformations">Transformations</a></li>
+<li><a class="reference internal" href="#ising-parameters">Ising Parameters</a></li>
+<li><a class="reference internal" href="#how-the-code-works">How the Code Works</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.circuitspec">Module circuitspec</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.hamilspec">Module hamilspec</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.parameters">Module parameters</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.units">Module units</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.dataspec">Module dataspec</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.util">Module util</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.text2latex">Module text2latex</a></li>
+<li><a class="reference internal" href="#module-pycqed.src.physical_constants">Module physical_constants</a></li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="toctree-wrapper compound">
+</div>
+<!-- ## PyCQED: Python Circuit Quantum Electro-Dynamics Package --><h1> PyCQED: Python Circuit Quantum Electro-Dynamics Package </h1><p>PyCQED is an attempt to combine modelling of quantum circuits and generation of data useful for performing experiments on real quantum circuits. For example, one may have designed a circuit that emulates two coupled superconducting qubits. The experiments required to test the dynamics of the circuit will require a series of control signals and procedures. Hopefully, PyCQED can be used to generate such signals based on the modelling results. Perhaps it is possible to develop a feedback procedure, where this package can be used to perform analysis that informs refinement of the model, which in turn can be used to generate new control signals and procedures. The package is currently in heavy development, however it currently has a number of features useful for modelling CQED circuits:</p>
+<ul class="simple">
+<li><p>Generate symbolic and numerical Hamiltonians of arbitrary circuits.</p></li>
+<li><p>Modular parameter sweeping system and extraction of quantities of interest.</p></li>
+<li><p>Circuit-resonator coupling (capacitive coupling only currently).</p></li>
+<li><p>Single qubit Hamiltonian reduction (local basis method).</p></li>
+</ul>
+<p>A few additional capabilities are in development also, intended as extensions for using the results of modelling CQED circuits:</p>
+<ul class="simple">
+<li><p>Create arbitrary Ising Hamiltonians from graphs.</p></li>
+<li><p>Simulation and analysis of quantum annealing processes.</p></li>
+<li><p>Simulation and analysis of quantum computing processes.</p></li>
+</ul>
+<p>PyCQED is built on top of the following external packages:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="http://qutip.org/">QuTiP</a>: QuTiP is open-source software for simulating the dynamics of open quantum systems.</p></li>
+<li><p><a class="reference external" href="https://networkx.github.io/">Networkx</a>: NetworkX is a Python package for the creation, manipulation, and study of the structure, dynamics, and functions of complex networks.</p></li>
+<li><p><a class="reference external" href="https://pypi.org/project/SchemDraw/">SchemDraw</a>: SchemDraw is a python package for producing high-quality electrical circuit schematic diagrams.</p></li>
+</ul>
+<p>and four packages from <a class="reference external" href="https://www.scipy.org/index.html">SciPy</a> stack</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://numpy.org/">NumPy</a>: NumPy is the fundamental package for scientific computing with Python.</p></li>
+<li><p><a class="reference external" href="https://www.scipy.org/index.html">SciPy</a>: The SciPy library provides many user-friendly and efficient numerical routines such as routines for numerical integration, interpolation, optimization, linear algebra and statistics.</p></li>
+<li><p><a class="reference external" href="https://www.sympy.org/en/index.html">SymPy</a>: SymPy is a Python library for symbolic mathematics.</p></li>
+<li><p><a class="reference external" href="https://matplotlib.org/">Matplotlib</a>: Matplotlib is a Python 2D plotting library.</p></li>
+</ul>
+<!-- ### Installation and Basic Usage --><h2> Installation </h2><p>The PyCQED package and its dependencies can be installed locally as follows (on Linux using python 3.x):</p>
+<div class="highlight-Shell notranslate"><div class="highlight"><pre><span></span>python3 setup.py install --user
+</pre></div>
+</div>
+<p>In some cases the dependencies of the required packages may not be resolved and the installation will fail. It might help to manually install the dependencies before running the setup script, as follows (on Linux using python 3.x):</p>
+<div class="highlight-Shell notranslate"><div class="highlight"><pre><span></span>pip3 install <span class="k">$(</span>cat requirements.txt<span class="k">)</span>
+</pre></div>
+</div>
+<h2> Core Basic Usage </h2><p>There are two main classes that are used together to generate Hamiltonians for arbitrary quantum circuits:</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">CircuitSpec</span></code> class is used to draw a circuit and generate the constitutive equations of the system under different representations.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">HamilSpec</span></code> class uses an instance of the above class under a specific representation (currently ‘node’ or ‘branch’ representations) to generate operators and a Hamiltonian that can be diagonalised.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">HierarchicalHamilSpec</span></code> class uses an instance of a <code class="docutils literal notranslate"><span class="pre">CircuitSpec</span></code> class to define a series of subcircuits. It is then possible to approximate the total Hamiltonian by focusing on the low energy part of each subcircuit and their interactions.</p></li>
+</ul>
+<p>The sphinx documentation is currently under construction, the homepage of which is <code class="docutils literal notranslate"><span class="pre">docs/_build/html/index.html</span></code>.</p>
+<p>See the examples in the <code class="docutils literal notranslate"><span class="pre">Notebooks</span></code> directory for detailed usage:</p>
+<ul class="simple">
+<li><p>Exploring the capacitively shunted qubit (CSFQ) in <code class="docutils literal notranslate"><span class="pre">Notebooks/csfq-example.ipynb</span></code></p></li>
+<li><p>Exploring single qubit reduction with the local basis technique in <code class="docutils literal notranslate"><span class="pre">Notebooks/local-basis-example.ipynb</span></code></p></li>
+<li><p>Exploring the qubit-resonator interaction in <code class="docutils literal notranslate"><span class="pre">Notebooks/resonator-example.ipynb</span></code></p></li>
+<li><p>Exploring the Averin coupler and advanced use of parameterisations in <code class="docutils literal notranslate"><span class="pre">Notebooks/averin-coupler.ipynb</span></code></p></li>
+<li><p>Exploring the Josephson phase-slip qubit (JPSQ) in <code class="docutils literal notranslate"><span class="pre">Notebooks/jpsq-example.ipynb</span></code></p></li>
+<li><p>Using mutual inductances in <code class="docutils literal notranslate"><span class="pre">Notebooks/mutual-inductance-example.ipynb</span></code></p></li>
+<li><p>Checking the stoquasticiy of Hamiltonians in <code class="docutils literal notranslate"><span class="pre">Notebooks/stoquastic.ipynb</span></code></p></li>
+<li><p>Exploring multi-qubit systems in <code class="docutils literal notranslate"><span class="pre">Notebooks/subcircuits-example.ipynb</span></code></p></li>
+</ul>
+<p>Description of the relevant source files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">circuitspec.py</span></code>: Circuit drawing and symbolic representation of the system equations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hamilspec.py</span></code>: Generation and solving of circuit Hamiltonians.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataspec.py</span></code>: Management of memory and data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parameters.py</span></code>: Helper classes for manipulating model parameters.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">units.py</span></code>: Helper library for converting between different unit systems.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">util.py</span></code>: A collection of useful functions for processing data and performing generic operations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">physical_constants.py</span></code>: Physical constants in SI units.</p></li>
+</ul>
+<h2> Extensions Basic Usage </h2><p>To simulate quantum annealing processes, two classes can be used in tandem:</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">IsingGraph</span></code> class is used to initialise arbitrary Ising Hamiltonians including higher order terms.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">QuantumAnnealing</span></code> class is used to analyse and simulate quantum annealing processes.</p></li>
+</ul>
+<p>The following examples are available in the <code class="docutils literal notranslate"><span class="pre">Notebooks</span></code> directory:</p>
+<ul class="simple">
+<li><p>Simulation and analysis of a weighted-MIS annealing problem in <code class="docutils literal notranslate"><span class="pre">Notebooks/ising-model-example.ipynb</span></code></p></li>
+</ul>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+<div class="section" id="circuit-qed-primer">
+<h1>Circuit QED Primer<a class="headerlink" href="#circuit-qed-primer" title="Permalink to this headline">¶</a></h1>
+<p>Here we briefly introduce Circuit Quantum Electrodynamics (CQED) for simulating Josephson Junction (JJ) circuits <a class="bibtex reference internal" href="#vool2017" id="id2">[5]</a><a class="bibtex reference internal" href="#kerman2017" id="id3">[4]</a>.</p>
+</div>
+<div class="section" id="transformations">
+<h1>Transformations<a class="headerlink" href="#transformations" title="Permalink to this headline">¶</a></h1>
+<p>Here we discuss the use of mode transformations for making Born-Oppenheimer (BO) approximations and reducing Hilbert space size.</p>
+</div>
+<div class="section" id="ising-parameters">
+<h1>Ising Parameters<a class="headerlink" href="#ising-parameters" title="Permalink to this headline">¶</a></h1>
+<p>Here we discuss methods of projecting full circuit Hamiltonians onto simpler Ising systems <a class="bibtex reference internal" href="#consani2019" id="id4">[1]</a>.</p>
+</div>
+<div class="section" id="how-the-code-works">
+<h1>How the Code Works<a class="headerlink" href="#how-the-code-works" title="Permalink to this headline">¶</a></h1>
+<p>Here we describe how the code builds circuit Hamiltonians and how parameter sweeps are performed.</p>
+</div>
+<div class="section" id="module-pycqed.src.circuitspec">
+<span id="module-circuitspec"></span><h1>Module circuitspec<a class="headerlink" href="#module-pycqed.src.circuitspec" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.circuitspec" title="pycqed.src.circuitspec"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.circuitspec</span></code></a> module defines the classes <a class="reference internal" href="#pycqed.src.circuitspec.CircuitSpec" title="pycqed.src.circuitspec.CircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code></a> and <a class="reference internal" href="#pycqed.src.circuitspec.SubCircuitSpec" title="pycqed.src.circuitspec.SubCircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SubCircuitSpec</span></code></a>.</p>
+<p>The class <a class="reference internal" href="#pycqed.src.circuitspec.CircuitSpec" title="pycqed.src.circuitspec.CircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code></a> is used to draw a circuit and build it’s constitutive equations. From the circuit diagram, a graph is built in which the edges have associated circuit components. The charge, flux and Josephson components of the total energy Hamiltonian are then generated symbolically so that they can be inspected and used as is by the user. It is possible to then define subcircuits derived from an instance of this class.</p>
+<p>The class <a class="reference internal" href="#pycqed.src.circuitspec.SubCircuitSpec" title="pycqed.src.circuitspec.SubCircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SubCircuitSpec</span></code></a> is used to partition a larger circuit into subcircuits, which include loading effects from other neighbouring circuits. It effectively has the same functionality as the <a class="reference internal" href="#pycqed.src.circuitspec.CircuitSpec" title="pycqed.src.circuitspec.CircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code></a> class but differs in the sense that it’s constitutive equations are statically defined and it is not possible to add branches and components. This class is designed such that it can be passed to an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code> and will behave in exactly the same way as when an instance of <a class="reference internal" href="#pycqed.src.circuitspec.CircuitSpec" title="pycqed.src.circuitspec.CircuitSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code></a> is passed.</p>
+<dl class="class">
+<dt id="pycqed.src.circuitspec.CircuitSpec">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.circuitspec.</code><code class="sig-name descname">CircuitSpec</code><span class="sig-paren">(</span><em class="sig-param">circuit_name, elem_prefixes=['C', 'L', 'I', 'M'], dof_prefixes=['\Phi', '\phi', 'Q', 'q'], gnd_node_clr='blue', circ_node_clr='red'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is used to draw a circuit and build it’s constitutive equations. From the circuit diagram, a graph is built in which the edges have associated circuit components. The charge, flux and Josephson components of the total energy Hamiltonian are then generated symbolically so that they can be inspected and used as is by the user. It is possible to then define subcircuits derived from an instance of this class.</p>
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addAnnotation">
+<code class="sig-name descname">addAnnotation</code><span class="sig-paren">(</span><em class="sig-param">note</em>, <em class="sig-param">node</em>, <em class="sig-param">direction</em>, <em class="sig-param">scaling=0.5</em>, <em class="sig-param">lead_len=0.5</em>, <em class="sig-param">comp_len=0.6</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addAnnotation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addBranch">
+<code class="sig-name descname">addBranch</code><span class="sig-paren">(</span><em class="sig-param">component_list</em>, <em class="sig-param">direction</em>, <em class="sig-param">start_node</em>, <em class="sig-param">end_node_ground</em>, <em class="sig-param">scaling=0.5</em>, <em class="sig-param">lead_len=1.0</em>, <em class="sig-param">comp_len=0.6</em>, <em class="sig-param">endline=None</em>, <em class="sig-param">arm_len=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addBranch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addChargeBias">
+<code class="sig-name descname">addChargeBias</code><span class="sig-paren">(</span><em class="sig-param">direction</em>, <em class="sig-param">node</em>, <em class="sig-param">scaling=0.5</em>, <em class="sig-param">lead_len=1.0</em>, <em class="sig-param">comp_len=0.6</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addChargeBias" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addFluxBias">
+<code class="sig-name descname">addFluxBias</code><span class="sig-paren">(</span><em class="sig-param">loop</em>, <em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addFluxBias" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addGroundNode">
+<code class="sig-name descname">addGroundNode</code><span class="sig-paren">(</span><em class="sig-param">pos</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addGroundNode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addLine">
+<code class="sig-name descname">addLine</code><span class="sig-paren">(</span><em class="sig-param">direction</em>, <em class="sig-param">start_node</em>, <em class="sig-param">lead_len=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addLine" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.addSchemElem">
+<code class="sig-name descname">addSchemElem</code><span class="sig-paren">(</span><em class="sig-param">elm_def</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.addSchemElem" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.coupleBranches">
+<code class="sig-name descname">coupleBranches</code><span class="sig-paren">(</span><em class="sig-param">M</em>, <em class="sig-param">direction</em>, <em class="sig-param">start_branch</em>, <em class="sig-param">end_node_ground</em>, <em class="sig-param">scaling=0.5</em>, <em class="sig-param">lead_len=1.0</em>, <em class="sig-param">comp_len=0.6</em>, <em class="sig-param">endline=None</em>, <em class="sig-param">arm_len=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.coupleBranches" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.coupleBranchesImplicitly">
+<code class="sig-name descname">coupleBranchesImplicitly</code><span class="sig-paren">(</span><em class="sig-param">M</em>, <em class="sig-param">branch1</em>, <em class="sig-param">branch2</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.coupleBranchesImplicitly" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.coupleLinearResonator">
+<code class="sig-name descname">coupleLinearResonator</code><span class="sig-paren">(</span><em class="sig-param">resonator_name, pos, coupling_type='capacitive', coupling_approx='RWA', d=['up', 'right']</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.coupleLinearResonator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.drawCircuit">
+<code class="sig-name descname">drawCircuit</code><span class="sig-paren">(</span><em class="sig-param">filename=None</em>, <em class="sig-param">output='svg'</em>, <em class="sig-param">inline=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.drawCircuit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.drawGraph">
+<code class="sig-name descname">drawGraph</code><span class="sig-paren">(</span><em class="sig-param">filename=None</em>, <em class="sig-param">output='svg'</em>, <em class="sig-param">inline=False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.drawGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.drawHierarchicalCircuit">
+<code class="sig-name descname">drawHierarchicalCircuit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.drawHierarchicalCircuit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.drawSubGraph">
+<code class="sig-name descname">drawSubGraph</code><span class="sig-paren">(</span><em class="sig-param">nodes</em>, <em class="sig-param">filename=None</em>, <em class="sig-param">output='svg'</em>, <em class="sig-param">inline=False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.drawSubGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getBiasInductanceMatrix">
+<code class="sig-name descname">getBiasInductanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getBiasInductanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getBiasSymbol">
+<code class="sig-name descname">getBiasSymbol</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">bias_type</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getBiasSymbol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getBiasSymbolList">
+<code class="sig-name descname">getBiasSymbolList</code><span class="sig-paren">(</span><em class="sig-param">bias_type</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getBiasSymbolList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getBranchToNodeMatrix">
+<code class="sig-name descname">getBranchToNodeMatrix</code><span class="sig-paren">(</span><em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getBranchToNodeMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getCapacitanceMatrix">
+<code class="sig-name descname">getCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getChargeBiasVector">
+<code class="sig-name descname">getChargeBiasVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">form='charge'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getChargeBiasVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getChargeVector">
+<code class="sig-name descname">getChargeVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getChargeVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getChargingEnergies">
+<code class="sig-name descname">getChargingEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getChargingEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getClassicalHamiltonian">
+<code class="sig-name descname">getClassicalHamiltonian</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getClassicalHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getClassicalJosephsonEnergies">
+<code class="sig-name descname">getClassicalJosephsonEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getClassicalJosephsonEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getClassicalPotential">
+<code class="sig-name descname">getClassicalPotential</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getClassicalPotential" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getClosureBranches">
+<code class="sig-name descname">getClosureBranches</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getClosureBranches" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getCurrentVector">
+<code class="sig-name descname">getCurrentVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getCurrentVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getDoFSymbol">
+<code class="sig-name descname">getDoFSymbol</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">dof_type</em>, <em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getDoFSymbol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getDoFSymbolAsMatrix">
+<code class="sig-name descname">getDoFSymbolAsMatrix</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">dof_type</em>, <em class="sig-param">n</em>, <em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getDoFSymbolAsMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getDoFSymbolList">
+<code class="sig-name descname">getDoFSymbolList</code><span class="sig-paren">(</span><em class="sig-param">dof_type</em>, <em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getDoFSymbolList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getEdgeList">
+<code class="sig-name descname">getEdgeList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getEdgeList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getFluxBiasMatrix">
+<code class="sig-name descname">getFluxBiasMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">form='flux'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getFluxBiasMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getFluxBiasVector">
+<code class="sig-name descname">getFluxBiasVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">form='flux'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getFluxBiasVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getFluxEnergies">
+<code class="sig-name descname">getFluxEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getFluxEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getFluxExpr">
+<code class="sig-name descname">getFluxExpr</code><span class="sig-paren">(</span><em class="sig-param">edge</em>, <em class="sig-param">etype='phase'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getFluxExpr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getFluxVector">
+<code class="sig-name descname">getFluxVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getFluxVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getGateCapacitanceMatrix">
+<code class="sig-name descname">getGateCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getGateCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getInductanceMatrix">
+<code class="sig-name descname">getInductanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getInductanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getInverseCapacitanceMatrix">
+<code class="sig-name descname">getInverseCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getInverseCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getInverseInductanceMatrix">
+<code class="sig-name descname">getInverseInductanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getInverseInductanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getIrreducibleLoops">
+<code class="sig-name descname">getIrreducibleLoops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getIrreducibleLoops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getJosephsonEnergies">
+<code class="sig-name descname">getJosephsonEnergies</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getJosephsonEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getJosephsonMatrix">
+<code class="sig-name descname">getJosephsonMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='branch'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getJosephsonMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getJosephsonVector">
+<code class="sig-name descname">getJosephsonVector</code><span class="sig-paren">(</span><em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getJosephsonVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getLeftDecompFluxVector">
+<code class="sig-name descname">getLeftDecompFluxVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getLeftDecompFluxVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getLeftDisplacementOpMatrix">
+<code class="sig-name descname">getLeftDisplacementOpMatrix</code><span class="sig-paren">(</span><em class="sig-param">adjoint=False</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em>, <em class="sig-param">as_vec=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getLeftDisplacementOpMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getModeTransformationMatrix">
+<code class="sig-name descname">getModeTransformationMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getModeTransformationMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getNodeList">
+<code class="sig-name descname">getNodeList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getNodeList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getNodeToBranchMatrix">
+<code class="sig-name descname">getNodeToBranchMatrix</code><span class="sig-paren">(</span><em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getNodeToBranchMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getNonCapacitiveEdges">
+<code class="sig-name descname">getNonCapacitiveEdges</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getNonCapacitiveEdges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getParameterDict">
+<code class="sig-name descname">getParameterDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getParameterDict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getQuantumHamiltonian">
+<code class="sig-name descname">getQuantumHamiltonian</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getQuantumHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getQuantumJosephsonEnergies">
+<code class="sig-name descname">getQuantumJosephsonEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getQuantumJosephsonEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getRedFluxVector">
+<code class="sig-name descname">getRedFluxVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getRedFluxVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getRightDecompFluxVector">
+<code class="sig-name descname">getRightDecompFluxVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getRightDecompFluxVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getRightDisplacementOpVector">
+<code class="sig-name descname">getRightDisplacementOpVector</code><span class="sig-paren">(</span><em class="sig-param">adjoint=False</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getRightDisplacementOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSingleParticleChargingEnergies">
+<code class="sig-name descname">getSingleParticleChargingEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSingleParticleChargingEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSingleParticleFluxEnergies">
+<code class="sig-name descname">getSingleParticleFluxEnergies</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSingleParticleFluxEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSpanningBranches">
+<code class="sig-name descname">getSpanningBranches</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSpanningBranches" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSubCircuit">
+<code class="sig-name descname">getSubCircuit</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSubCircuit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSubCircuitEdges">
+<code class="sig-name descname">getSubCircuitEdges</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSubCircuitEdges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSubCircuitInteractionHamiltonian">
+<code class="sig-name descname">getSubCircuitInteractionHamiltonian</code><span class="sig-paren">(</span><em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSubCircuitInteractionHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSubCircuitNodes">
+<code class="sig-name descname">getSubCircuitNodes</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSubCircuitNodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSubCircuitQuantumHamiltonian">
+<code class="sig-name descname">getSubCircuitQuantumHamiltonian</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSubCircuitQuantumHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSuperconductingLoopEdges">
+<code class="sig-name descname">getSuperconductingLoopEdges</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSuperconductingLoopEdges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getSuperconductingLoops">
+<code class="sig-name descname">getSuperconductingLoops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getSuperconductingLoops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.getVoltageVector">
+<code class="sig-name descname">getVoltageVector</code><span class="sig-paren">(</span><em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">if_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.getVoltageVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.hierarchize">
+<code class="sig-name descname">hierarchize</code><span class="sig-paren">(</span><em class="sig-param">edge_groups</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.hierarchize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.moveFluxBias">
+<code class="sig-name descname">moveFluxBias</code><span class="sig-paren">(</span><em class="sig-param">old_edge</em>, <em class="sig-param">new_edge</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.moveFluxBias" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.newDrawingFromSchem">
+<code class="sig-name descname">newDrawingFromSchem</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.newDrawingFromSchem" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.popSchemDraw">
+<code class="sig-name descname">popSchemDraw</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.popSchemDraw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.pushSchemDraw">
+<code class="sig-name descname">pushSchemDraw</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.pushSchemDraw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.remBranch">
+<code class="sig-name descname">remBranch</code><span class="sig-paren">(</span><em class="sig-param">edge</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.remBranch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.repBranch">
+<code class="sig-name descname">repBranch</code><span class="sig-paren">(</span><em class="sig-param">component_list</em>, <em class="sig-param">edge</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.repBranch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.setModeTransformationMatrix">
+<code class="sig-name descname">setModeTransformationMatrix</code><span class="sig-paren">(</span><em class="sig-param">matrix_data</em>, <em class="sig-param">auto=False</em>, <em class="sig-param">mode='node'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.setModeTransformationMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.showCircuitStats">
+<code class="sig-name descname">showCircuitStats</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.showCircuitStats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.CircuitSpec.symmetrizeFluxBias">
+<code class="sig-name descname">symmetrizeFluxBias</code><span class="sig-paren">(</span><em class="sig-param">old_edge</em>, <em class="sig-param">new_edge</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.CircuitSpec.symmetrizeFluxBias" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.circuitspec.</code><code class="sig-name descname">SubCircuitSpec</code><span class="sig-paren">(</span><em class="sig-param">circuit_name</em>, <em class="sig-param">parent_circuit</em>, <em class="sig-param">nodes</em>, <em class="sig-param">edges</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is instantiated by the <code class="xref py py-func docutils literal notranslate"><span class="pre">hierarchize()</span></code> function to allow solving subcircuits individually.</p>
+<dl class="attribute">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.charge_bias_caps">
+<code class="sig-name descname">charge_bias_caps</code><em class="property"> = None</em><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.charge_bias_caps" title="Permalink to this definition">¶</a></dt>
+<dd><p>self.kwargs = [elem_prefixes, dof_prefixes, gnd_node_clr, circ_node_clr]
+self.graph = nx.DiGraph(circuit_name=self.circ_name) # TODO: Think of using MultiDiGraph to allow more than two branches between nodes
+self.drawing = schem.Drawing()
+self.schem_code = []                    # Holds all elements necessary to regenerate the circuit as is
+self.schem_code_block = []              # Block of drawing code associated with edge (temporary)
+self.schem_code_blocks = {}             # Holds all blocks necessary to regenerate/edit circuit edges
+self.node_circ_coords = {}              # Holds the circuit diagram coordinates of the nodes
+self.code_elems = 0                     # Counts the number of SchemDraw elements
+self.code_lines = 0
+# Node properties (circuit diagram)
+self.circ_node_clr = circ_node_clr
+self.gnd_node_clr = gnd_node_clr</p>
+<p># Coupled subsystems
+self.coupled_subsys = {}</p>
+<p># Extended circuit
+self.rcircuit = None</p>
+<p># Extended circuit loaded system matrices
+self.rcircuit_sys_matrices = {}</p>
+<p># Add the first ground node
+self.addSchemElem(e.GND)
+self.pushSchemDraw()
+start_node = self.addSchemElem(e.DOT,lftlabel=”0”,color=self.gnd_node_clr)
+self.graph.add_node(0,ntype=”Ground”)
+self.node_circ_coords[0] = start_node.end</p>
+<p># Add this code to the full code
+self.schem_code.extend(self.schem_code_block)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getCapacitanceMatrix">
+<code class="sig-name descname">getCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getChargeBiasVector">
+<code class="sig-name descname">getChargeBiasVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">form='charge'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getChargeBiasVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getChargeVector">
+<code class="sig-name descname">getChargeVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getChargeVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getFluxVector">
+<code class="sig-name descname">getFluxVector</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getFluxVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getGateCapacitanceMatrix">
+<code class="sig-name descname">getGateCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getGateCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getInductanceMatrix">
+<code class="sig-name descname">getInductanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getInductanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getInverseCapacitanceMatrix">
+<code class="sig-name descname">getInverseCapacitanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getInverseCapacitanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getInverseInductanceMatrix">
+<code class="sig-name descname">getInverseInductanceMatrix</code><span class="sig-paren">(</span><em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getInverseInductanceMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getLeftDisplacementOpMatrix">
+<code class="sig-name descname">getLeftDisplacementOpMatrix</code><span class="sig-paren">(</span><em class="sig-param">adjoint=False</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em>, <em class="sig-param">as_vec=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getLeftDisplacementOpMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.circuitspec.SubCircuitSpec.getRightDisplacementOpVector">
+<code class="sig-name descname">getRightDisplacementOpVector</code><span class="sig-paren">(</span><em class="sig-param">adjoint=False</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">sym_lev='lowest'</em>, <em class="sig-param">as_equ=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.circuitspec.SubCircuitSpec.getRightDisplacementOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.hamilspec">
+<span id="module-hamilspec"></span><h1>Module hamilspec<a class="headerlink" href="#module-pycqed.src.hamilspec" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="pycqed.src.hamilspec.HamilSpec">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.hamilspec.</code><code class="sig-name descname">HamilSpec</code><span class="sig-paren">(</span><em class="sig-param">circuitspec</em>, <em class="sig-param">unit=&lt;pycqed.src.units.Units object&gt;</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">include_subsystem=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.addParameterisation">
+<code class="sig-name descname">addParameterisation</code><span class="sig-paren">(</span><em class="sig-param">old_param</em>, <em class="sig-param">expr</em>, <em class="sig-param">name_map</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.addParameterisation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.applyParameterisations">
+<code class="sig-name descname">applyParameterisations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.applyParameterisations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.applyTransformation">
+<code class="sig-name descname">applyTransformation</code><span class="sig-paren">(</span><em class="sig-param">tmat</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.applyTransformation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.diagonalize">
+<code class="sig-name descname">diagonalize</code><span class="sig-paren">(</span><em class="sig-param">M</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.diagonalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.evalSpec">
+<code class="sig-name descname">evalSpec</code><span class="sig-paren">(</span><em class="sig-param">func</em>, <em class="sig-param">diag</em>, <em class="sig-param">depends</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.evalSpec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getBranchCurrentOperator">
+<code class="sig-name descname">getBranchCurrentOperator</code><span class="sig-paren">(</span><em class="sig-param">edge</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getBranchCurrentOperator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getBranchCurrents">
+<code class="sig-name descname">getBranchCurrents</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getBranchCurrents" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getChargeOpVector">
+<code class="sig-name descname">getChargeOpVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getChargeOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getChargingEnergies">
+<code class="sig-name descname">getChargingEnergies</code><span class="sig-paren">(</span><em class="sig-param">node=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getChargingEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getCommutator">
+<code class="sig-name descname">getCommutator</code><span class="sig-paren">(</span><em class="sig-param">Q</em>, <em class="sig-param">P</em>, <em class="sig-param">basis='charge'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getCommutator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getDiagConfig">
+<code class="sig-name descname">getDiagConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getDiagConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getExpandedOperatorsMap">
+<code class="sig-name descname">getExpandedOperatorsMap</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getExpandedOperatorsMap" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getFluxEnergies">
+<code class="sig-name descname">getFluxEnergies</code><span class="sig-paren">(</span><em class="sig-param">edge=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getFluxEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getFluxOpVector">
+<code class="sig-name descname">getFluxOpVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getFluxOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getHamiltonian">
+<code class="sig-name descname">getHamiltonian</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getHilbertSpaceSize">
+<code class="sig-name descname">getHilbertSpaceSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getHilbertSpaceSize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getJosephsonEnergies">
+<code class="sig-name descname">getJosephsonEnergies</code><span class="sig-paren">(</span><em class="sig-param">edge=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getJosephsonEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getLeftDispAdjOpMatrix">
+<code class="sig-name descname">getLeftDispAdjOpMatrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getLeftDispAdjOpMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getLeftDispOpMatrix">
+<code class="sig-name descname">getLeftDispOpMatrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getLeftDispOpMatrix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getNodeVoltageOperator">
+<code class="sig-name descname">getNodeVoltageOperator</code><span class="sig-paren">(</span><em class="sig-param">node</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getNodeVoltageOperator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getNodeVoltages">
+<code class="sig-name descname">getNodeVoltages</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getNodeVoltages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getOpExpectationValue">
+<code class="sig-name descname">getOpExpectationValue</code><span class="sig-paren">(</span><em class="sig-param">op</em>, <em class="sig-param">lket</em>, <em class="sig-param">rket</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getOpExpectationValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getOpVectors">
+<code class="sig-name descname">getOpVectors</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getOpVectors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getOperatorList">
+<code class="sig-name descname">getOperatorList</code><span class="sig-paren">(</span><em class="sig-param">trunc</em>, <em class="sig-param">basis='charge'</em>, <em class="sig-param">osc_impedance=50.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getOperatorList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getParameterNames">
+<code class="sig-name descname">getParameterNames</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getParameterNames" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getParameterSweep">
+<code class="sig-name descname">getParameterSweep</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getParameterSweep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getParameterValue">
+<code class="sig-name descname">getParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getParameterValues">
+<code class="sig-name descname">getParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*names</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getParameterValuesDict">
+<code class="sig-name descname">getParameterValuesDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getParameterValuesDict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getPosList">
+<code class="sig-name descname">getPosList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getPosList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getPrefactor">
+<code class="sig-name descname">getPrefactor</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getPrefactor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getResonatorResponse">
+<code class="sig-name descname">getResonatorResponse</code><span class="sig-paren">(</span><em class="sig-param">E</em>, <em class="sig-param">V</em>, <em class="sig-param">nmax=100</em>, <em class="sig-param">eval_dp=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getResonatorResponse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getRightDispAdjOpVector">
+<code class="sig-name descname">getRightDispAdjOpVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getRightDispAdjOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getRightDispOpVector">
+<code class="sig-name descname">getRightDispOpVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getRightDispOpVector" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParameter">
+<code class="sig-name descname">getSubsystemDerivedParameter</code><span class="sig-paren">(</span><em class="sig-param">param</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParameter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParameters">
+<code class="sig-name descname">getSubsystemDerivedParameters</code><span class="sig-paren">(</span><em class="sig-param">subsystem</em>, <em class="sig-param">which=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParametersList">
+<code class="sig-name descname">getSubsystemDerivedParametersList</code><span class="sig-paren">(</span><em class="sig-param">subsystem</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSubsystemDerivedParametersList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSubsystemList">
+<code class="sig-name descname">getSubsystemList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSubsystemList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSweep">
+<code class="sig-name descname">getSweep</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">ind_var</em>, <em class="sig-param">static_vars</em>, <em class="sig-param">evaluable='getHamiltonian'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSweep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSymbolicChargingEnergies">
+<code class="sig-name descname">getSymbolicChargingEnergies</code><span class="sig-paren">(</span><em class="sig-param">node=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSymbolicChargingEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSymbolicExpressions">
+<code class="sig-name descname">getSymbolicExpressions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSymbolicExpressions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSymbolicJosephsonEnergies">
+<code class="sig-name descname">getSymbolicJosephsonEnergies</code><span class="sig-paren">(</span><em class="sig-param">edge=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSymbolicJosephsonEnergies" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.getSymbolicOscillatorParams">
+<code class="sig-name descname">getSymbolicOscillatorParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.getSymbolicOscillatorParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.paramSweep">
+<code class="sig-name descname">paramSweep</code><span class="sig-paren">(</span><em class="sig-param">sweep_spec, eval_spec=[{'eval': 'getHamiltonian', 'diag': True, 'depends': None, 'kwargs': {}}], timesweep=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.paramSweep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.paramSweepFunc">
+<code class="sig-name descname">paramSweepFunc</code><span class="sig-paren">(</span><em class="sig-param">sweep_spec</em>, <em class="sig-param">ufcn</em>, <em class="sig-param">ufcn_args={}</em>, <em class="sig-param">get_vectors=False</em>, <em class="sig-param">sparse=False</em>, <em class="sig-param">sparselevels=6</em>, <em class="sig-param">sparsesolveropts={'maxiter': None</em>, <em class="sig-param">'mode': 'normal'</em>, <em class="sig-param">'sigma': 0</em>, <em class="sig-param">'tol': 0}</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.paramSweepFunc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.prepareOperators">
+<code class="sig-name descname">prepareOperators</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.prepareOperators" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.prepareSubsystemOperators">
+<code class="sig-name descname">prepareSubsystemOperators</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.prepareSubsystemOperators" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.regenOp">
+<code class="sig-name descname">regenOp</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">params={'basis': 'osc'</em>, <em class="sig-param">'osc_impedance': 50.0}</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.regenOp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.regenOps">
+<code class="sig-name descname">regenOps</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">params={'basis': 'osc'</em>, <em class="sig-param">'osc_impedance': 50.0}</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.regenOps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.rmParameterisation">
+<code class="sig-name descname">rmParameterisation</code><span class="sig-paren">(</span><em class="sig-param">old_param</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.rmParameterisation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.setDiagConfig">
+<code class="sig-name descname">setDiagConfig</code><span class="sig-paren">(</span><em class="sig-param">eigvalues=5</em>, <em class="sig-param">get_vectors=False</em>, <em class="sig-param">sparse=False</em>, <em class="sig-param">sparsesolveropts={'maxiter': None</em>, <em class="sig-param">'mode': 'normal'</em>, <em class="sig-param">'sigma': 0</em>, <em class="sig-param">'tol': 0}</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.setDiagConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.setParameterValue">
+<code class="sig-name descname">setParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.setParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.setParameterValues">
+<code class="sig-name descname">setParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*name_value_pairs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.setParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.setTruncation">
+<code class="sig-name descname">setTruncation</code><span class="sig-paren">(</span><em class="sig-param">pos</em>, <em class="sig-param">trunc</em>, <em class="sig-param">basis</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.setTruncation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.setTruncations">
+<code class="sig-name descname">setTruncations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.setTruncations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.sparsity">
+<code class="sig-name descname">sparsity</code><span class="sig-paren">(</span><em class="sig-param">op</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.sparsity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.substitute">
+<code class="sig-name descname">substitute</code><span class="sig-paren">(</span><em class="sig-param">params_dict</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.substitute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HamilSpec.sweepSpec">
+<code class="sig-name descname">sweepSpec</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HamilSpec.sweepSpec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.hamilspec.</code><code class="sig-name descname">HierarchicalHamilSpec</code><span class="sig-paren">(</span><em class="sig-param">circuitspec</em>, <em class="sig-param">unit=&lt;pycqed.src.units.Units object&gt;</em>, <em class="sig-param">mode='node'</em>, <em class="sig-param">include_subsystem=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.evalSpec">
+<code class="sig-name descname">evalSpec</code><span class="sig-paren">(</span><em class="sig-param">func</em>, <em class="sig-param">diag</em>, <em class="sig-param">depends</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.evalSpec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getHamiltonian">
+<code class="sig-name descname">getHamiltonian</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getHamiltonian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterNames">
+<code class="sig-name descname">getParameterNames</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterNames" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterSweep">
+<code class="sig-name descname">getParameterSweep</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterSweep" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValue">
+<code class="sig-name descname">getParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValues">
+<code class="sig-name descname">getParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*names</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValuesDict">
+<code class="sig-name descname">getParameterValuesDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getParameterValuesDict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getPosList">
+<code class="sig-name descname">getPosList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getPosList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getPrefactor">
+<code class="sig-name descname">getPrefactor</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getPrefactor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSubCircuit">
+<code class="sig-name descname">getSubCircuit</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSubCircuit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the <a class="reference internal" href="#pycqed.src.hamilspec.HamilSpec" title="pycqed.src.hamilspec.HamilSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code></a> object associated with <cite>name</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the subcircuit sought.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The instance of <a class="reference internal" href="#pycqed.src.hamilspec.HamilSpec" title="pycqed.src.hamilspec.HamilSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code></a> associated with <cite>name</cite></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pycqed.src.hamilspec.HamilSpec" title="pycqed.src.hamilspec.HamilSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSubCircuitNames">
+<code class="sig-name descname">getSubCircuitNames</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSubCircuitNames" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of subcircuit names associated with the underlying <code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code> instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A list of subcircuit names</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemDerivedParameter">
+<code class="sig-name descname">getSubsystemDerivedParameter</code><span class="sig-paren">(</span><em class="sig-param">param</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemDerivedParameter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemDerivedParametersList">
+<code class="sig-name descname">getSubsystemDerivedParametersList</code><span class="sig-paren">(</span><em class="sig-param">subsystem</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemDerivedParametersList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemList">
+<code class="sig-name descname">getSubsystemList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSubsystemList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.getSymbolicOscillatorParams">
+<code class="sig-name descname">getSymbolicOscillatorParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.getSymbolicOscillatorParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.prepareOperators">
+<code class="sig-name descname">prepareOperators</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.prepareOperators" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.setParameterValue">
+<code class="sig-name descname">setParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.setParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.setParameterValues">
+<code class="sig-name descname">setParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*name_value_pairs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.setParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.setSubCircuitTruncation">
+<code class="sig-name descname">setSubCircuitTruncation</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">trunc</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.setSubCircuitTruncation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.hamilspec.HierarchicalHamilSpec.sweepSpec">
+<code class="sig-name descname">sweepSpec</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.hamilspec.HierarchicalHamilSpec.sweepSpec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.parameters">
+<span id="module-parameters"></span><h1>Module parameters<a class="headerlink" href="#module-pycqed.src.parameters" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.parameters" title="pycqed.src.parameters"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.parameters</span></code></a> module defines two classes <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a> and <a class="reference internal" href="#pycqed.src.parameters.ParamCollection" title="pycqed.src.parameters.ParamCollection"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParamCollection</span></code></a> that are used to manipulate scalar parameters used in simulations and experiments.</p>
+<dl class="class">
+<dt id="pycqed.src.parameters.Param">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.parameters.</code><code class="sig-name descname">Param</code><span class="sig-paren">(</span><em class="sig-param">name, value=0.0, bounds=[-inf, inf]</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class defines the properties of a parameter used in simulations and experiments. It supports upper and lower bounds and the generation of sweeps for scalars.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The utf name of the parameter.</p></li>
+<li><p><strong>value</strong> (<em>int float np.float64</em><em>, </em><em>optional</em>) – The initial value to set the parameter to, defaults to <cite>0.0</cite>.</p></li>
+<li><p><strong>bounds</strong> (<em>list of floats</em><em>, </em><em>optional</em>) – The lower and upper bounds of the parameter, defaults to <cite>[-np.inf, np.inf]</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameters are not accepted types or the initial value is out of bounds.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A new instance of <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a></p>
+</dd>
+</dl>
+<p>This constructor attempts to generate a latex version of the parameter name for use with plots. It uses the <a class="reference internal" href="#module-pycqed.src.text2latex" title="pycqed.src.text2latex"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.text2latex</span></code></a> module for this functionality.</p>
+<p>The following class attributes are accessible by the user:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – The utf string of the parameter.</p></li>
+<li><p><strong>name_latex</strong> – A string to be used with latex.</p></li>
+<li><p><strong>sweep</strong> – The sweep array.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="pycqed.src.parameters.Param.getBounds">
+<code class="sig-name descname">getBounds</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param.getBounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the bounds of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The lower and upper bounds of the parameter.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list of two floats</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.Param.getValue">
+<code class="sig-name descname">getValue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param.getValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current value of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>Exception</strong> – If the value is out of bounds.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The current value of the parameter.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>int float np.float64</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.Param.linearSweep">
+<code class="sig-name descname">linearSweep</code><span class="sig-paren">(</span><em class="sig-param">start</em>, <em class="sig-param">end</em>, <em class="sig-param">N</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param.linearSweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a linear sweep using <cite>numpy.linspace</cite> with added bounds checking. The sweep is saved internally, and is overwritten by subsequent calls to this function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>float</em>) – The initial value of the sweep.</p></li>
+<li><p><strong>end</strong> (<em>float</em>) – The last value of the sweep.</p></li>
+<li><p><strong>N</strong> (<em>int</em>) – The number of points from start to end.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the argument types are incorrect, or if start and end are out of bounds.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The parameter sweep array.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.Param.setBounds">
+<code class="sig-name descname">setBounds</code><span class="sig-paren">(</span><em class="sig-param">bounds</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param.setBounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the bounds of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>bounds</strong> (<em>list of two floats</em><em>, or </em><em>np.inf.</em>) – The lower and upper bounds of the parameter.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the bounds are not in the correct format, or the lower bound is greater than the upper bound.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.Param.setValue">
+<code class="sig-name descname">setValue</code><span class="sig-paren">(</span><em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.Param.setValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>int float np.float64</em>) – The value to set the parameter to.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the value is not an accepted type, or it is out of bounds.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycqed.src.parameters.ParamCollection">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.parameters.</code><code class="sig-name descname">ParamCollection</code><span class="sig-paren">(</span><em class="sig-param">names</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class uses an array of <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a> instances and provides methods to manipulate them in useful ways, for example to create multidimensional sweeps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>names</strong> (<em>list of str</em>) – A list of parameter names to create.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the names are not strings (raised by the underlying <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a> constructor).</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A new instance of <a class="reference internal" href="#pycqed.src.parameters.ParamCollection" title="pycqed.src.parameters.ParamCollection"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParamCollection</span></code></a></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#pycqed.src.parameters.ParamCollection" title="pycqed.src.parameters.ParamCollection"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParamCollection</span></code></a></p>
+</dd>
+</dl>
+<p>The following class attributes are accessible by the user. These attributes are created or overwritten by calls to <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.ndSweep" title="pycqed.src.parameters.ParamCollection.ndSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">ndSweep()</span></code></a>, except the last, which is created or overwritten by calls to <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.computeFuncSweep" title="pycqed.src.parameters.ParamCollection.computeFuncSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">computeFuncSweep()</span></code></a> and <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.computeExprSweep" title="pycqed.src.parameters.ParamCollection.computeExprSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">computeExprSweep()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sweep_spec</strong> – An array of sweep specifications.</p></li>
+<li><p><strong>sweep_grid_npts</strong> – The number of points in the current parameters sweep.</p></li>
+<li><p><strong>sweep_grid_ndims</strong> – The number of dimensions or parameters being swept.</p></li>
+<li><p><strong>sweep_grid_params</strong> – The list of parameters being swept.</p></li>
+<li><p><strong>sweep_grid_c</strong> – Dictionary of collapsed sweeps keyed by parameter name.</p></li>
+<li><p><strong>sweep_grid_nc</strong> – Dictionary of non-collapsed sweeps keyed by parameter name.</p></li>
+<li><p><strong>sweep_grid_result</strong> – One-dimensional array of values (or objects) that result from computing a sweep with the collapsed grid.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.addParameter">
+<code class="sig-name descname">addParameter</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.addParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a new parameter to the collection if it does not already exist. If it does exist, nothing is reported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the parameter to add.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.addParameters">
+<code class="sig-name descname">addParameters</code><span class="sig-paren">(</span><em class="sig-param">*names</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.addParameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds multiple new parameters to the collection if they do not already exist. If some or all exist, nothing is reported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>*name</strong> (<em>str</em><em>, </em><em>str ...</em>) – Arguments list of parameter names to add.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.collapsedIndices">
+<code class="sig-name descname">collapsedIndices</code><span class="sig-paren">(</span><em class="sig-param">*indices</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.collapsedIndices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the indices of the collapsed array for corresponding indices of the non-collapsed array. Should not be used by the user. Will be hidden in the future.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>*indices</strong> (<em>int</em><em>, </em><em>int ...</em>) – Indices of the single parameter sweeps.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A single index to retrieve an entry from a results array.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.computeExprSweep">
+<code class="sig-name descname">computeExprSweep</code><span class="sig-paren">(</span><em class="sig-param">cobj</em>, <em class="sig-param">paramcb</em>, <em class="sig-param">exprcb</em>, <em class="sig-param">spec</em>, <em class="sig-param">*expr_args</em>, <em class="sig-param">**expr_kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.computeExprSweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute an expression over sweep. Use this to avoid regenerating sympy expressions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.computeFuncSweep">
+<code class="sig-name descname">computeFuncSweep</code><span class="sig-paren">(</span><em class="sig-param">func</em>, <em class="sig-param">spec</em>, <em class="sig-param">*fcn_args</em>, <em class="sig-param">**fcn_kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.computeFuncSweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a function over a sweep. Uses the collapsed grid created by <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.ndSweep" title="pycqed.src.parameters.ParamCollection.ndSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">ndSweep()</span></code></a> internally.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>function</em>) – Function reference to compute over the sweep</p></li>
+<li><p><strong>spec</strong> (<em>list of dict</em>) – An array of parameter sweep specifications, optionally created by <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.paramSweepSpec" title="pycqed.src.parameters.ParamCollection.paramSweepSpec"><code class="xref py py-func docutils literal notranslate"><span class="pre">paramSweepSpec()</span></code></a>.</p></li>
+<li><p><strong>*fcn_args</strong> (<em>variable</em>) – Positional arguments to pass to <cite>func</cite>.</p></li>
+<li><p><strong>*fcn_kwargs</strong> (<em>variable</em>) – Keyword arguments to pass to <cite>func</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the requested sweeps exceed the bounds of a parameter.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterLatexName">
+<code class="sig-name descname">getParameterLatexName</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterLatexName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the latex name of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the parameter.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameter is not in the collection.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The parameter latex name.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterList">
+<code class="sig-name descname">getParameterList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the parameter dictionary, mapping the utf name to the <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a> instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary of param names to <a class="reference internal" href="#pycqed.src.parameters.Param" title="pycqed.src.parameters.Param"><code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code></a> instances.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterNamesList">
+<code class="sig-name descname">getParameterNamesList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterNamesList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the list of available parameter names in the collection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The list of parameter names.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterSweep">
+<code class="sig-name descname">getParameterSweep</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterSweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the parameter sweep associated with a parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the parameter.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameter is not in the collection.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The sweep array.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterValue">
+<code class="sig-name descname">getParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the value of a given parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the parameter.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameter is not in the collection.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The current value of the specified parameter.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterValues">
+<code class="sig-name descname">getParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*names</em>, <em class="sig-param">dictionary=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the values of many parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*names</strong> (<em>str</em><em>, </em><em>str ...</em>) – Arguments list, formatted as the parameter names.</p></li>
+<li><p><strong>dictionary</strong> (<em>bool</em><em>, </em><em>optional</em>) – Specifies whether to return the result as a dictionary, defaults to <cite>False</cite></p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the argument types are incorrect, ill-formatted or not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A list if <cite>dictionary=False</cite>, a dictionary with the parameter names as keys if <cite>dictionary=True</cite></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list or dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getParameterValuesDict">
+<code class="sig-name descname">getParameterValuesDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getParameterValuesDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a dictionary of the current set values of the parameters in a dictionary format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary of all param names to values.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.getSweepResult">
+<code class="sig-name descname">getSweepResult</code><span class="sig-paren">(</span><em class="sig-param">ind_var</em>, <em class="sig-param">static_vars</em>, <em class="sig-param">data=None</em>, <em class="sig-param">key=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.getSweepResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the result of a sweep as a function of one or more independent variables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ind_var</strong> (<em>str</em><em>, </em><em>list</em>) – The parameter name that is swept. This is the independent variable. If more than one independent variable are specified, the order in which they appear does not affect the returned result.</p></li>
+<li><p><strong>static_vars</strong> (<em>dict</em>) – A dictionary of parameters and associated values for which to get the sweep result. The values need not correspond to the actual sweep values used. The closest value found will be used and returned.</p></li>
+<li><p><strong>data</strong> (<em>list</em><em>, </em><em>np.ndarray</em><em>, </em><em>dict</em><em>, </em><em>optional</em>) – A data set obtained from sweeping parameters.</p></li>
+<li><p><strong>key</strong> (<em>str</em><em>, </em><em>optional</em>) – A string corresponding to a key if the optional <cite>data</cite> parameter is a <cite>dict</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If specified parameters are not found, or some are missing.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>list of swept parameter arrays, the sweep result and a dictionary corresponding to the static values requested.</p>
+</dd>
+</dl>
+<p>If <cite>ind_var</cite> is specified as a list, the corresponding higher dimensional sweep result is returned in a mesh format.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.ndSweep">
+<code class="sig-name descname">ndSweep</code><span class="sig-paren">(</span><em class="sig-param">spec</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.ndSweep" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a single or multidimensional sweep of parameters in such a way that only a single for loop is required to apply the parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>spec</strong> (<em>list of dict</em>) – An array of parameter sweep specifications, optionally created by <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.paramSweepSpec" title="pycqed.src.parameters.ParamCollection.paramSweepSpec"><code class="xref py py-func docutils literal notranslate"><span class="pre">paramSweepSpec()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the requested sweeps exceed the bounds of a parameter.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p><strong>Sweep Grid Explanation</strong></p>
+<p>Two version of the sweep grid are created, a <em>collapsed</em> and <em>non-collapsed</em> version. The former is convenient for use with a single for-loop, whereas the latter is more convenient for plotting data. The grids are saved as class attributes <cite>sweep_grid_c</cite> and <cite>sweep_grid_nc</cite> respectively, and their format is as follows</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">param_name1</span><span class="p">:</span> <span class="n">ndarray1</span><span class="p">,</span>
+    <span class="n">param_name2</span><span class="p">:</span> <span class="n">ndarray2</span><span class="p">,</span>
+    <span class="o">...</span>
+    <span class="n">param_nameN</span><span class="p">:</span> <span class="n">ndarrayN</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>where <cite>ndarrayN</cite> is a one-dimensional array in the collapsed case, and a k dimensional array for k parameters in the non-collapsed case.</p>
+<p><strong>Order of the Sweeps</strong></p>
+<p>The last entry of the <cite>spec</cite> list corresponds to the inner-most nested loop, thus the results of that sweep are contiguous in the result of sweeping the collapsed list.</p>
+<p><strong>Retrieving Sweeps</strong></p>
+<p>If the collapsed sweep arrays are used in single loop, the results can be appended to a single one dimensional array. To retrieve the result of single sweep given constant values of the other parameters, use the <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.getSweepResult" title="pycqed.src.parameters.ParamCollection.getSweepResult"><code class="xref py py-func docutils literal notranslate"><span class="pre">getSweepResult()</span></code></a> function.</p>
+<p><strong>Example</strong></p>
+<p>Here we create a three dimensional sweep and show the collapsed and non-collapsed sweep grids.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create new instance</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">ParamCollection</span><span class="p">([</span><span class="s2">&quot;p1&quot;</span><span class="p">,</span><span class="s2">&quot;p2&quot;</span><span class="p">,</span><span class="s2">&quot;p3&quot;</span><span class="p">])</span>
+
+<span class="c1"># Generate a sweep specification</span>
+<span class="n">spec</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">paramSweepSpec</span><span class="p">(</span><span class="s2">&quot;p1&quot;</span><span class="p">,</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">,</span><span class="mi">11</span><span class="p">),</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">paramSweepSpec</span><span class="p">(</span><span class="s2">&quot;p2&quot;</span><span class="p">,</span><span class="o">-</span><span class="mf">10.0</span><span class="p">,</span><span class="mf">10.0</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">paramSweepSpec</span><span class="p">(</span><span class="s2">&quot;p3&quot;</span><span class="p">,</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mi">101</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="c1"># Generate the sweep grid</span>
+<span class="n">p</span><span class="o">.</span><span class="n">ndSweep</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+<span class="c1"># Show the collapsed grid</span>
+<span class="k">print</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">sweep_grid_c</span><span class="p">)</span>
+
+<span class="c1"># Show the non collapsed grid</span>
+<span class="k">print</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">sweep_grid_nc</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.paramSweepSpec">
+<code class="sig-name descname">paramSweepSpec</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">*sweep_params</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.paramSweepSpec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to generate a sweep specification for use with <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.ndSweep" title="pycqed.src.parameters.ParamCollection.ndSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">ndSweep()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The name of the parameter to sweep.</p></li>
+<li><p><strong>*sweep_params</strong> (<em>float</em><em>, </em><em>int</em><em>, </em><em>variable</em>) – The arguments of the sweep generating function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the argument types are incorrect, ill-formatted, not found, or out of bounds.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A sweep specification dictionary for use with <a class="reference internal" href="#pycqed.src.parameters.ParamCollection.ndSweep" title="pycqed.src.parameters.ParamCollection.ndSweep"><code class="xref py py-func docutils literal notranslate"><span class="pre">ndSweep()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.rmParameter">
+<code class="sig-name descname">rmParameter</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.rmParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a parameter from the collection if it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The parameter to remove.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameter does not exist in the collection.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.setParameterValue">
+<code class="sig-name descname">setParameterValue</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.setParameterValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of a given parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The name of the parameter to set.</p></li>
+<li><p><strong>value</strong> (<em>float</em>) – The value to set the parameter to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the parameter is not in the collection.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.parameters.ParamCollection.setParameterValues">
+<code class="sig-name descname">setParameterValues</code><span class="sig-paren">(</span><em class="sig-param">*name_value_pairs</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.parameters.ParamCollection.setParameterValues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set many parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>*name_value_pairs</strong> (<em>str</em><em>, </em><em>float</em><em>, </em><em>str</em><em>, </em><em>float ...</em><em>, or </em><em>a dict.</em>) – Arguments list, formatted as the parameter name followed by its value, or optionally passed as a dictionary.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the argument types are incorrect, ill-formatted, not found, or out of bounds.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.units">
+<span id="module-units"></span><h1>Module units<a class="headerlink" href="#module-pycqed.src.units" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.util" title="pycqed.src.util"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.util</span></code></a> module defines the class <a class="reference internal" href="#pycqed.src.units.Units" title="pycqed.src.units.Units"><code class="xref py py-class docutils literal notranslate"><span class="pre">Units</span></code></a> which is used to specify a unit system for the parameters of the system and to convert quantities between different units.</p>
+<dl class="class">
+<dt id="pycqed.src.units.Units">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.units.</code><code class="sig-name descname">Units</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">system='SI'</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class initialises the prefactors used in <code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code> and can be used to convert between different unit systems. A series of presets are available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The name of the unit system. Can be the name of a preset.</p></li>
+<li><p><strong>system</strong> (<em>str</em><em>, </em><em>optional</em>) – The unit system to use. Can be “SI” only at the moment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A new instance of <a class="reference internal" href="#pycqed.src.units.Units" title="pycqed.src.units.Units"><code class="xref py py-class docutils literal notranslate"><span class="pre">Units</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pycqed.src.units.Units" title="pycqed.src.units.Units"><code class="xref py py-class docutils literal notranslate"><span class="pre">Units</span></code></a></p>
+</dd>
+</dl>
+<dl class="method">
+<dt id="pycqed.src.units.Units.convertCurrent">
+<code class="sig-name descname">convertCurrent</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">old_unit</em>, <em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.convertCurrent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert given data between current units.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.convertEnergy">
+<code class="sig-name descname">convertEnergy</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">old_unit</em>, <em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.convertEnergy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert given data between energy units.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.convertVoltage">
+<code class="sig-name descname">convertVoltage</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">old_unit</em>, <em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.convertVoltage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert given data between voltage units.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.getPrefactor">
+<code class="sig-name descname">getPrefactor</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.getPrefactor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the unit conversion value for a specific term.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – The name of the conversion value to get.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.loadPreset">
+<code class="sig-name descname">loadPreset</code><span class="sig-paren">(</span><em class="sig-param">preset</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.loadPreset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a preset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>preset</strong> (<em>str</em>) – The name of the preset.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.setCurrentUnit">
+<code class="sig-name descname">setCurrentUnit</code><span class="sig-paren">(</span><em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.setCurrentUnit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the output current unit. The prefix and the unit are detected to determine the correct factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_unit</strong> (<em>str</em>) – The new unit to use, for example ‘mA’ for milli-Ampere.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the base unit or the prefix are not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.setEnergyUnit">
+<code class="sig-name descname">setEnergyUnit</code><span class="sig-paren">(</span><em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.setEnergyUnit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the output energy unit. The prefix and the unit are detected to determine the correct factor. A number of commonly used units are available, such as Kelvin and electron-Volts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_unit</strong> (<em>str</em>) – The new unit to use, for example ‘keV’ for kilo-electron-Volts.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the base unit or the prefix are not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.setUnit">
+<code class="sig-name descname">setUnit</code><span class="sig-paren">(</span><em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.setUnit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an input unit. The prefix and the unit are detected to determine the correct factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_unit</strong> (<em>str</em>) – The new unit to use, for example ‘mA’ for milli-Ampere.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the base unit or the prefix are not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.setUnitPrefactor">
+<code class="sig-name descname">setUnitPrefactor</code><span class="sig-paren">(</span><em class="sig-param">unit</em>, <em class="sig-param">new_unit</em>, <em class="sig-param">value</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.setUnitPrefactor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an input unit prefactor directly. This allows specifying units in terms of physical constants.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> – The base unit of the selected system to use, form example ‘A’ for Ampere in the SI system.</p></li>
+<li><p><strong>new_unit</strong> (<em>str</em>) – A string describing the new unit.</p></li>
+<li><p><strong>value</strong> (<em>float</em>) – The value to set the conversion factor to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the base unit is not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.units.Units.setVoltageUnit">
+<code class="sig-name descname">setVoltageUnit</code><span class="sig-paren">(</span><em class="sig-param">new_unit</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.units.Units.setVoltageUnit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the output voltage unit. The prefix and the unit are detected to determine the correct factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_unit</strong> (<em>str</em>) – The new unit to use, for example ‘mV’ for milli-Volt.</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the base unit or the prefix are not found.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p>All prefactors are updated following this call.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.units.units_presets">
+<code class="sig-prename descclassname">pycqed.src.units.</code><code class="sig-name descname">units_presets</code><em class="property"> = {'CQED1': {'A': {'factor': 1e-06, 'unit': 'uA'}, 'C': {'factor': 3.20435324e-19, 'unit': '2e'}, 'Current': {'factor': 1000000.0, 'unit': 'uA'}, 'Energy': {'factor': 1.5091902046963573e+24, 'unit': 'GHz'}, 'F': {'factor': 1e-15, 'unit': 'fF'}, 'H': {'factor': 1e-12, 'unit': 'pH'}, 'Hz': {'factor': 1000000000.0, 'unit': 'GHz'}, 'J': {'factor': 1.0, 'unit': 'J'}, 'K': {'factor': 1.0, 'unit': 'K'}, 'Ohm': {'factor': 1.0, 'unit': 'Ohm'}, 'V': {'factor': 1e-06, 'unit': 'uV'}, 'Voltage': {'factor': 1000000.0, 'unit': 'uV'}, 'Wb': {'factor': 2.067833831e-15, 'unit': 'phi0'}, 'eV': {'factor': 1.0, 'unit': 'eV'}}, 'CQED2': {'A': {'factor': 1e-09, 'unit': 'nA'}, 'C': {'factor': 3.20435324e-19, 'unit': '2e'}, 'Current': {'factor': 999999999.9999999, 'unit': 'nA'}, 'Energy': {'factor': 1.5091902046963573e+24, 'unit': 'GHz'}, 'F': {'factor': 1e-15, 'unit': 'fF'}, 'H': {'factor': 1e-12, 'unit': 'pH'}, 'Hz': {'factor': 1000000000.0, 'unit': 'GHz'}, 'J': {'factor': 1.0, 'unit': 'J'}, 'K': {'factor': 1.0, 'unit': 'K'}, 'Ohm': {'factor': 1.0, 'unit': 'Ohm'}, 'V': {'factor': 1e-09, 'unit': 'nV'}, 'Voltage': {'factor': 999999999.9999999, 'unit': 'nV'}, 'Wb': {'factor': 2.067833831e-15, 'unit': 'phi0'}, 'eV': {'factor': 1.0, 'unit': 'eV'}}}</em><a class="headerlink" href="#pycqed.src.units.units_presets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unit system presets</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.dataspec">
+<span id="module-dataspec"></span><h1>Module dataspec<a class="headerlink" href="#module-pycqed.src.dataspec" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.dataspec" title="pycqed.src.dataspec"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.dataspec</span></code></a> module defines the classes <a class="reference internal" href="#pycqed.src.dataspec.TempData" title="pycqed.src.dataspec.TempData"><code class="xref py py-class docutils literal notranslate"><span class="pre">TempData</span></code></a> and <a class="reference internal" href="#pycqed.src.dataspec.ProjectData" title="pycqed.src.dataspec.ProjectData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProjectData</span></code></a>.</p>
+<p>The class <a class="reference internal" href="#pycqed.src.dataspec.TempData" title="pycqed.src.dataspec.TempData"><code class="xref py py-class docutils literal notranslate"><span class="pre">TempData</span></code></a> is used as a base class to provide functionality on how to save and handle data generated by the classes <code class="xref py py-class docutils literal notranslate"><span class="pre">CircuitSpec</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HamilSpec</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">ParamCollection</span></code> for memory management purposes.</p>
+<p>The class <a class="reference internal" href="#pycqed.src.dataspec.ProjectData" title="pycqed.src.dataspec.ProjectData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProjectData</span></code></a> is used to create structured output for later use. This is a mechanism for saving work in a consistent way.</p>
+<p>This module also defines a series of plotting utilities for data representation, based on <cite>matplotlib</cite>.</p>
+<dl class="class">
+<dt id="pycqed.src.dataspec.ProjectData">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.dataspec.</code><code class="sig-name descname">ProjectData</code><a class="headerlink" href="#pycqed.src.dataspec.ProjectData" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="pycqed.src.dataspec.TempData">
+<em class="property">class </em><code class="sig-prename descclassname">pycqed.src.dataspec.</code><code class="sig-name descname">TempData</code><a class="headerlink" href="#pycqed.src.dataspec.TempData" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is used to manage data generated by the various classes used in PyCQED. It provides a mechanism for saving data to disk temporarily rather than using RAM.</p>
+<p>On instantiation the root temporary directory is created in a suitable location determined by the operating system.</p>
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.clearSessionData">
+<code class="sig-name descname">clearSessionData</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.clearSessionData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes temporary data associated with the current session. Should be called when an object is deleted ideally, to ensure the HDD is not filled with excessive amounts of data. In any case the OS should automatically delete temporary files at least following a power cycle.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.newPrefix">
+<code class="sig-name descname">newPrefix</code><span class="sig-paren">(</span><em class="sig-param">pref_id</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.newPrefix" title="Permalink to this definition">¶</a></dt>
+<dd><p>A new prefix should be created in association with a particular dataset generated by a PyCQED class. During the lifetime of a class, if it has an associated session, multiple datasets may be generated. A new prefix allows different datasets to be uniquely identified in the temporary storage space, otherwise they will be overwritten using the default prefix. A unique prefix can be generated from the parameters names and values that were used to generate the dataset.</p>
+<p>Currently this isn’t necessary as during the lifetime of this class, the part number is incremented continuously, and thus data will not be overwritten.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.newSession">
+<code class="sig-name descname">newSession</code><span class="sig-paren">(</span><em class="sig-param">obj_id</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.newSession" title="Permalink to this definition">¶</a></dt>
+<dd><p>A new session should be created in association with the lifetime of a PyCQED class. During the lifetime of that class, any temporary data will be written in that session so that it can be later retrieved. This prevents the temporary data from being overwritten if a new instance of the same PyCQED class is created. Using the objects memory address to uniquely identify it means the same directory will be used for that object.</p>
+<p>A new tmp directory will be created in the root tmp directory to identify this session, named after the hex representation of the memory address.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>obj_id</strong> (<em>int</em>) – The memory address of the object obtained using <cite>id(my_obj)</cite>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The path to the tmp directory associated with this session.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.readPart">
+<code class="sig-name descname">readPart</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.readPart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a temporary data file with pickled data contained within.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em>) – The path to the binary file to read.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The object retrieved from the file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.sessionExists">
+<code class="sig-name descname">sessionExists</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.sessionExists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if a session exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>True if the current object has an associated session, else False.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycqed.src.dataspec.TempData.writePart">
+<code class="sig-name descname">writePart</code><span class="sig-paren">(</span><em class="sig-param">data</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.dataspec.TempData.writePart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a temporary data file and return its name so that it can be saved for later use. The data is pickled and written to a binary file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>object</em>) – An arbitrary python object that must be serialisable.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The name of the data file including its path.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.util">
+<span id="module-util"></span><h1>Module util<a class="headerlink" href="#module-pycqed.src.util" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.util" title="pycqed.src.util"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.util</span></code></a> module defines a series of utility functions that are used internally and can be used by the user.</p>
+<dl class="function">
+<dt id="pycqed.src.util.diagDenseH">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">diagDenseH</code><span class="sig-paren">(</span><em class="sig-param">M</em>, <em class="sig-param">eigvalues=5</em>, <em class="sig-param">get_vectors=False</em>, <em class="sig-param">sparsesolveropts=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.diagDenseH" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dense Hermitian matrix diagonalizer. Wraps <cite>scipy.linalg.eigh</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M</strong> (<em>qutip.qobj.Qobj</em>) – The Hermitian matrix to diagonalize.</p></li>
+<li><p><strong>eigvalues</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of lowest eigenvalues (and vectors if <cite>get_vectors</cite> is <cite>True</cite>) to compute.</p></li>
+<li><p><strong>get_vectors</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to get the associated eigenvectors.</p></li>
+<li><p><strong>sparsesolveropts</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary of keyword arguments to pass to the sparse solver. These are not used here but are included to reduce if statements where the diagonalizer functions are used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If <cite>M</cite> is not a qutip.qobj.Qobj instance or is not Hermitian.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A sorted list of eigenvalues or a tuple of eigenvalues and normalised eigenvectors (as qutip.qobj.Qobj types) if <cite>get_vectors</cite> is <cite>True</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(numpy.ndarray, numpy.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.diagSparseH">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">diagSparseH</code><span class="sig-paren">(</span><em class="sig-param">M</em>, <em class="sig-param">eigvalues=5</em>, <em class="sig-param">get_vectors=False</em>, <em class="sig-param">sparsesolveropts={'maxiter': None</em>, <em class="sig-param">'mode': 'normal'</em>, <em class="sig-param">'sigma': None</em>, <em class="sig-param">'tol': 0}</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.diagSparseH" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sparse Hermitian matrix diagonalizer. Wraps <cite>scipy.sparse.linalg.eigsh</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M</strong> (<em>qutip.qobj.Qobj</em>) – The Hermitian matrix to diagonalize.</p></li>
+<li><p><strong>eigvalues</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of lowest eigenvalues (and vectors if <cite>get_vectors</cite> is <cite>True</cite>) to compute.</p></li>
+<li><p><strong>get_vectors</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to get the associated eigenvectors.</p></li>
+<li><p><strong>sparsesolveropts</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary of keyword arguments to pass to the sparse solver, see the documentation of <cite>scipy.sparse.linalg.eigsh</cite> for details.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If <cite>M</cite> is not a qutip.qobj.Qobj instance or is not Hermitian.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A sorted list of eigenvalues or a tuple of eigenvalues and normalised eigenvectors (as qutip.qobj.Qobj types) if <cite>get_vectors</cite> is <cite>True</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(numpy.ndarray, numpy.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getACStarkShift">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getACStarkShift</code><span class="sig-paren">(</span><em class="sig-param">Erwa</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getACStarkShift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the circuit AC stark shift as a function of the average photon number in a linear resonator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>Erwa</strong> (<em>numpy.ndarray</em>) – The full eigenvalue array returned by <code class="xref py py-func docutils literal notranslate"><span class="pre">pycqed.src.HamilSpec.getResonatorResponse()</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The photon number list and the AC Stark shifted circuit energy gaps.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(numpy.ndarray, numpy.ndarray)</p>
+</dd>
+</dl>
+<p>The format of the returned array is: <cite>ret[q,n]</cite> is the gap between the state <cite>q</cite> and the ground state, at <cite>n</cite> photons.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getCircuitLambShift">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getCircuitLambShift</code><span class="sig-paren">(</span><em class="sig-param">Erwa</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getCircuitLambShift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the circuit Lamb shift due to coupling to a linear resonator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>Erwa</strong> (<em>numpy.ndarray</em>) – The full eigenvalue array returned by <code class="xref py py-func docutils literal notranslate"><span class="pre">pycqed.src.HamilSpec.getResonatorResponse()</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Lamb shifted (dressed) circuit energy gaps.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p>The format of the returned array is: <cite>ret[q]</cite> is the gap between state <cite>q</cite> and the ground state, at 0 photons.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getEigenValuesAndVectors">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getEigenValuesAndVectors</code><span class="sig-paren">(</span><em class="sig-param">sweep</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getEigenValuesAndVectors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function to separate the eigenvalues from the eigenvectors of a parameter sweep returned by <code class="xref py py-func docutils literal notranslate"><span class="pre">pycqed.src.HamilSpec.getSweep()</span></code>. When the diagonaliser is configured to return both eigenvalues and vectors, the dtype of the <cite>numpy.ndarray</cite> will be <cite>object</cite>, which results in conversion issues for example in <cite>matplotlib</cite>. This function performs the conversion of the <cite>numpy.ndarray</cite> dtype.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>sweep</strong> (<em>numpy.ndarray</em>) – The sweep structure returned by <code class="xref py py-func docutils literal notranslate"><span class="pre">pycqed.src.HamilSpec.getSweep()</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The eigenvalues as <cite>numpy.float64</cite> types and eigenvectors as <cite>object</cite> types contained in <cite>sweep</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(numpy.ndarray, numpy.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getExpectationValues">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getExpectationValues</code><span class="sig-paren">(</span><em class="sig-param">sweep</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getExpectationValues" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getNeighbours">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getNeighbours</code><span class="sig-paren">(</span><em class="sig-param">bitstring</em>, <em class="sig-param">HW=1</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getNeighbours" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates the nearest neighbours of the given bit string according to the given Hamming weight.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bitstring</strong> (<em>str</em>) – The bitstring consisting of 0 and 1 characters.</p></li>
+<li><p><strong>HW</strong> (<em>int</em><em>, </em><em>optional</em>) – The desired Hamming weight, defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A list of the nearest neighbours of Hamming weight <cite>HW</cite> to <cite>bitstring</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.getResonatorShift">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">getResonatorShift</code><span class="sig-paren">(</span><em class="sig-param">Erwa</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.getResonatorShift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the linear resonator shift as a function of the average photon number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>Erwa</strong> (<em>numpy.ndarray</em>) – The full eigenvalue array returned by <code class="xref py py-func docutils literal notranslate"><span class="pre">pycqed.src.HamilSpec.getResonatorResponse()</span></code>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Lamb shifted (dressed) circuit energy gaps.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p>The format of the returned array is: <cite>ret[q,n]</cite> is the resonant frequency at circuit state <cite>q</cite> and at <cite>n</cite> photons.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.hdot">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">hdot</code><span class="sig-paren">(</span><em class="sig-param">m1</em>, <em class="sig-param">m2</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.hdot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Hadamard product of two matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m1</strong> (<em>np.ndarray</em><em>, </em><em>np.matrix</em><em>, </em><em>list</em>) – The first matrix.</p></li>
+<li><p><strong>m2</strong> (<em>np.ndarray</em><em>, </em><em>np.matrix</em><em>, </em><em>list</em>) – The second matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Hadamard product of two matrices.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.matrix</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.isStoquastic">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">isStoquastic</code><span class="sig-paren">(</span><em class="sig-param">H, order=[2, 3]</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.isStoquastic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given Hamiltonian is Stoquastic. Non-Stoquastic Hamiltonians are understood to lead to sign-problems in Quantum Monte Carlo methods <a class="bibtex reference internal" href="#gupta2019b" id="id5">[3]</a>. We use the permutation matrix representation of the Hamiltonian and the Off-Diagonal Expansion method <a class="bibtex reference internal" href="#gupta2019a" id="id6">[2]</a> to find the configurations for which a negative weight exists. There are infinite possible configurations to infinite order. It should suffice to check the configurations of low order, however the order values to check can be specified.</p>
+<p>__IMPLEMENTATION NOTE:__ Currently the implementation is inefficient and cannot make use of sparse matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>H</strong> (<em>qutip.qobj.Qobj</em>) – The Hamiltonian to verify stoquasticity.</p></li>
+<li><p><strong>order</strong> (<em>list</em><em>, </em><em>optional</em>) – A list of order values for which each configuration should be checked.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if the specified Hamiltonian is stoquastic.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.mdot">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">mdot</code><span class="sig-paren">(</span><em class="sig-param">*args</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.mdot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a sequence of dot or matrix products.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>*args</strong> (<em>np.ndarray</em><em>, </em><em>np.ndarray ...</em>) – A sequence of numpy matrices to multiply in the order specified.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The result of the dot or matrix product.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.pauliCoefficients">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">pauliCoefficients</code><span class="sig-paren">(</span><em class="sig-param">E</em>, <em class="sig-param">V</em>, <em class="sig-param">basis_op</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.pauliCoefficients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs Hamiltonian reduction to a two-dimensional Hilbert space useful for describing qubits as spins. This function returns the Pauli coefficients <span class="math notranslate nohighlight">\(h_\mathrm{x,y,z}\)</span> of the corresponding spin operators <span class="math notranslate nohighlight">\(\hat{\sigma}_\mathrm{x,y,z}\)</span>. We use the ‘local basis’ approach developed by G. Consani <a class="bibtex reference internal" href="#consani2019" id="id7">[1]</a> which is superior to traditional qubit circuit Hamiltonian reduction methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<em>numpy.ndarray</em>) – A two-dimensional list of eigenvalues, the first index corresponding to the state number, and the second corresponding to the value of a swept variable, usually an external charge or flux depending on the qubit type.</p></li>
+<li><p><strong>V</strong> (<em>numpy.ndarray</em>) – The eigenvectors corresponding to the supplied eigenvalues. The eigenvectors themselves should be <cite>Qobj</cite> instances.</p></li>
+<li><p><strong>basis_op</strong> (<em>qutip.qobj.Qobj</em><em>, </em><em>numpy.ndarray</em>) – A list or a single operator that defines the computational basis. Usually the persistent current for a flux qubit or the charge number for a charge qubit.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>Exception</strong> – If <cite>E</cite> and <cite>V</cite> are not of type <cite>list</cite> or <cite>numpy.ndarray</cite>.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The list of <span class="math notranslate nohighlight">\(h_\mathrm{x,y,z}\)</span> values for each value of the swept variable.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(numpy.ndarray, numpy.ndarray, numpy.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.pickleRead">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">pickleRead</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.pickleRead" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read pickled data from a binary file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em>) – The path and filename to read from.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The unpickled data contained in the specified file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.pickleWrite">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">pickleWrite</code><span class="sig-paren">(</span><em class="sig-param">obj</em>, <em class="sig-param">filename</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.pickleWrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write pickled data to a binary file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>obj</strong> (<em>object</em>) – A serialisable python object.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – The path and filename to write to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The filename that was written to.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.sanArray">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">sanArray</code><span class="sig-paren">(</span><em class="sig-param">a</em>, <em class="sig-param">tol=1e-10</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.sanArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sanitizes an array <cite>a</cite> by setting values less than <cite>tol</cite> to zero, including the imaginary component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> (<em>np.ndarray</em><em>, </em><em>np.matrix</em><em>, </em><em>list</em>) – The input array.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – The cutoff below which values are set to zero.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.sanFloat">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">sanFloat</code><span class="sig-paren">(</span><em class="sig-param">f</em>, <em class="sig-param">tol=1e-10</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.sanFloat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sanitizes a float <cite>f</cite> by setting it to zero if less than <cite>tol</cite>, including the imaginary component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f</strong> (<em>float</em>) – The input float.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – The cutoff below which values are set to zero.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="pycqed.src.util.stateFromBitstring">
+<code class="sig-prename descclassname">pycqed.src.util.</code><code class="sig-name descname">stateFromBitstring</code><span class="sig-paren">(</span><em class="sig-param">bitstring</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.util.stateFromBitstring" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates the state vector associated with a bit string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>bitstring</strong> (<em>str</em>) – The bitstring consisting of 0 and 1 characters.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The eigenvector associated with <cite>bitstring</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Qobj</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.text2latex">
+<span id="module-text2latex"></span><h1>Module text2latex<a class="headerlink" href="#module-pycqed.src.text2latex" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="pycqed.src.text2latex.latexify_param_name">
+<code class="sig-prename descclassname">pycqed.src.text2latex.</code><code class="sig-name descname">latexify_param_name</code><span class="sig-paren">(</span><em class="sig-param">param_string</em><span class="sig-paren">)</span><a class="headerlink" href="#pycqed.src.text2latex.latexify_param_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-pycqed.src.physical_constants">
+<span id="module-physical-constants"></span><h1>Module physical_constants<a class="headerlink" href="#module-pycqed.src.physical_constants" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-pycqed.src.physical_constants" title="pycqed.src.physical_constants"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pycqed.src.physical_constants</span></code></a> module provides commonly used physical constants in SI units.</p>
+<dl class="data">
+<dt id="pycqed.src.physical_constants.G">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">G</code><em class="property"> = 6.67408e-11</em><a class="headerlink" href="#pycqed.src.physical_constants.G" title="Permalink to this definition">¶</a></dt>
+<dd><p>Newton Gravitation constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.G0">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">G0</code><em class="property"> = 7.748091731e-05</em><a class="headerlink" href="#pycqed.src.physical_constants.G0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Conductance quantum</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.Na">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">Na</code><em class="property"> = 6.022140857e+23</em><a class="headerlink" href="#pycqed.src.physical_constants.Na" title="Permalink to this definition">¶</a></dt>
+<dd><p>Avogadro constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.alpha">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">alpha</code><em class="property"> = 0.007297351</em><a class="headerlink" href="#pycqed.src.physical_constants.alpha" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fine structure constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.c">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">c</code><em class="property"> = 299792458.0</em><a class="headerlink" href="#pycqed.src.physical_constants.c" title="Permalink to this definition">¶</a></dt>
+<dd><p>Speed of light in vacuum</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.e">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">e</code><em class="property"> = 1.60217662e-19</em><a class="headerlink" href="#pycqed.src.physical_constants.e" title="Permalink to this definition">¶</a></dt>
+<dd><p>Elementary charge</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.eps0">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">eps0</code><em class="property"> = 8.85418782e-12</em><a class="headerlink" href="#pycqed.src.physical_constants.eps0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Permittivity of free space</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.h">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">h</code><em class="property"> = 6.62607004e-34</em><a class="headerlink" href="#pycqed.src.physical_constants.h" title="Permalink to this definition">¶</a></dt>
+<dd><p>Planck constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.hbar">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">hbar</code><em class="property"> = 1.0545718e-34</em><a class="headerlink" href="#pycqed.src.physical_constants.hbar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduced planck constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.kB">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">kB</code><em class="property"> = 1.38064852e-23</em><a class="headerlink" href="#pycqed.src.physical_constants.kB" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boltzmann constant</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.me">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">me</code><em class="property"> = 9.10938356e-31</em><a class="headerlink" href="#pycqed.src.physical_constants.me" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron mass</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.mp">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">mp</code><em class="property"> = 1.672621898e-27</em><a class="headerlink" href="#pycqed.src.physical_constants.mp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Proton mass</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.mu0">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">mu0</code><em class="property"> = 1.25663706e-06</em><a class="headerlink" href="#pycqed.src.physical_constants.mu0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Permeability of free space</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="pycqed.src.physical_constants.phi0">
+<code class="sig-prename descclassname">pycqed.src.physical_constants.</code><code class="sig-name descname">phi0</code><em class="property"> = 2.067833831e-15</em><a class="headerlink" href="#pycqed.src.physical_constants.phi0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flux quantum</p>
+</dd></dl>
+
+</div>
+<div class="section" id="references">
+<h1>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h1>
+<p id="bibtex-bibliography-index-0"><dl class="citation">
+<dt class="bibtex label" id="consani2019"><span class="brackets">1</span><span class="fn-backref">(<a href="#id4">1</a>,<a href="#id7">2</a>)</span></dt>
+<dd><p>Gioele Consani and Paul A. Warburton. Effective Hamiltonians for interacting superconducting qubits – local basis reduction and the Schrieffer-Wolff transformation. <em>Not Published</em>, 2019. URL: <a class="reference external" href="http://arxiv.org/abs/1912.00464">http://arxiv.org/abs/1912.00464</a>, <a class="reference external" href="https://arxiv.org/abs/1912.00464">arXiv:1912.00464</a>.</p>
+</dd>
+<dt class="bibtex label" id="gupta2019a"><span class="brackets"><a class="fn-backref" href="#id6">2</a></span></dt>
+<dd><p>Lalit Gupta, Tameem Albash, and Itay Hen. Permutation Matrix Representation Quantum Monte Carlo. <em>Not Published</em>, pages 1–13, 2019. URL: <a class="reference external" href="http://arxiv.org/abs/1908.03740">http://arxiv.org/abs/1908.03740</a>, <a class="reference external" href="https://arxiv.org/abs/1908.03740">arXiv:1908.03740</a>.</p>
+</dd>
+<dt class="bibtex label" id="gupta2019b"><span class="brackets"><a class="fn-backref" href="#id5">3</a></span></dt>
+<dd><p>Lalit Gupta and Itay Hen. Elucidating the interplay between non-stoquasticity and the sign problem. <em>Not Published</em>, pages 1–10, 2019. URL: <a class="reference external" href="http://arxiv.org/abs/1910.13867">http://arxiv.org/abs/1910.13867</a>, <a class="reference external" href="https://arxiv.org/abs/1910.13867">arXiv:1910.13867</a>.</p>
+</dd>
+<dt class="bibtex label" id="kerman2017"><span class="brackets"><a class="fn-backref" href="#id3">4</a></span></dt>
+<dd><p>Andrew J Kerman. Efficient simulation of complex , Josephson quantum circuits with linear inductances. <em>Not Published</em>, 2017.</p>
+</dd>
+<dt class="bibtex label" id="vool2017"><span class="brackets"><a class="fn-backref" href="#id2">5</a></span></dt>
+<dd><p>Uri Vool and Michel Devoret. Introduction to quantum electromagnetic circuits. <em>International Journal of Circuit Theory and Applications</em>, 45(7):897–934, 2017. <a class="reference external" href="https://arxiv.org/abs/1610.03438">arXiv:1610.03438</a>, <a class="reference external" href="https://doi.org/10.1002/cta.2359">doi:10.1002/cta.2359</a>.</p>
+</dd>
+</dl>
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">PyCQED v0.11 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Louis Fry-Bouriaux.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.1.
+    </div>
+  </body>
+</html>
