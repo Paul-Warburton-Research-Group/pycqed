@@ -1836,7 +1836,7 @@ class CircuitSpec:
     #
     #
     def drawCircuit(self, filename=None, output="svg", inline=False):
-        self.drawing.draw(showplot=False)
+        self.drawing.draw()
         if inline:
             return None
         
