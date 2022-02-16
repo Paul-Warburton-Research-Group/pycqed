@@ -1,0 +1,5 @@
+Notebooks/.ipynb_checkpoints
+__pycache__
+PyCQED.egg-info
+build
+dist
