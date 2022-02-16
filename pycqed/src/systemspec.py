@@ -1,7 +1,7 @@
 """ The :py:mod:`pycqed.src.systemspec` module defines the class :class:`SystemSpec` which is used to join circuits built using the :class:`CircuitSpec` class. At the top-level, the subcircuits are defined as black boxes with nodes represented as I/O pins. Subcircuits can be coupled directly, or with any circuit element that is available.
 """
-import SchemDraw as schem
-import SchemDraw.elements as e
+import schemdraw as schem
+import schemdraw.elements as e
 import networkx as nx
 import numpy as np
 import sympy as sy

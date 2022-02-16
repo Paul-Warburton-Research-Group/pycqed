@@ -4,8 +4,8 @@ The class :class:`CircuitSpec` is used to draw a circuit and build it's constitu
 
 The class :class:`SubCircuitSpec` is used to partition a larger circuit into subcircuits, which include loading effects from other neighbouring circuits. It effectively has the same functionality as the :class:`CircuitSpec` class but differs in the sense that it's constitutive equations are statically defined and it is not possible to add branches and components. This class is designed such that it can be passed to an instance of :class:`HamilSpec` and will behave in exactly the same way as when an instance of :class:`CircuitSpec` is passed.
 """
-import SchemDraw as schem
-import SchemDraw.elements as e
+import schemdraw as schem
+import schemdraw.elements as e
 import networkx as nx
 import numpy as np
 import sympy as sy
