@@ -543,7 +543,7 @@ class HamilSpec(ds.TempData):
         for sym in self.cs.getChargeVector():
             pos = pos_dofs_rev[sym]
             arr.append(pos_ops[pos])
-        self.Qnp = -_init_qobj_vector(arr,dtype=object).T
+        self.Qnp = -self._init_qobj_vector(arr,dtype=object).T
     
     ##
     #
@@ -560,7 +560,7 @@ class HamilSpec(ds.TempData):
         for sym in self.cs.getFluxVector():
             pos = pos_dofs_rev[sym]
             arr.append(pos_ops[pos])
-        self.Pnp = _init_qobj_vector(arr,dtype=object).T
+        self.Pnp = self._init_qobj_vector(arr,dtype=object).T
     
     ##
     #
@@ -587,7 +587,7 @@ class HamilSpec(ds.TempData):
             except KeyError:
                 pos = pos_dofs_rev2[sym]
                 arr.append(pos_ops2[pos])
-        self.Dr = _init_qobj_vector(arr,dtype=object).T
+        self.Dr = self._init_qobj_vector(arr,dtype=object).T
     
     ##
     #
@@ -614,7 +614,7 @@ class HamilSpec(ds.TempData):
             except KeyError:
                 pos = pos_dofs_rev2[sym]
                 arr.append(pos_ops2[pos])
-        self.Dr_adj = _init_qobj_vector(arr,dtype=object).T
+        self.Dr_adj = self._init_qobj_vector(arr,dtype=object).T
     
     ##
     #
@@ -641,7 +641,7 @@ class HamilSpec(ds.TempData):
             except KeyError:
                 pos = pos_dofs_rev2[sym]
                 arr.append(pos_ops2[pos])
-        self.Dl = _init_qobj_vector(np.diag(np.array(arr,dtype=object)),dtype=object)
+        self.Dl = self._init_qobj_vector(np.diag(np.array(arr,dtype=object)),dtype=object)
     
     ##
     #
@@ -668,7 +668,7 @@ class HamilSpec(ds.TempData):
             except KeyError:
                 pos = pos_dofs_rev2[sym]
                 arr.append(pos_ops2[pos])
-        self.Dl_adj = _init_qobj_vector(np.diag(np.array(arr,dtype=object)),dtype=object)
+        self.Dl_adj = self._init_qobj_vector(np.diag(np.array(arr,dtype=object)),dtype=object)
     
     ##
     #
@@ -823,14 +823,14 @@ class HamilSpec(ds.TempData):
         #    self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
         
         # Substitute circuit parameters
-        self.Cinvnp = _init_qobj_vector(self.Cinv.subs(subs),dtype=np.float64)
-        self.Linvnp = _init_qobj_vector(self.Linv.subs(subs),dtype=np.float64)
-        self.Jvecnp = _init_qobj_vector(self.Jvec.subs(subs),dtype=np.float64).T
+        self.Cinvnp = self._init_qobj_vector(self.Cinv.subs(subs),dtype=np.float64)
+        self.Linvnp = self._init_qobj_vector(self.Linv.subs(subs),dtype=np.float64)
+        self.Jvecnp = self._init_qobj_vector(self.Jvec.subs(subs),dtype=np.float64).T
         
         # Substitute external biases
-        self.Qbnp = _init_qobj_vector(self.Qb.subs(subs),dtype=np.float64) # x 2e
-        self.Pbsm = _init_qobj_vector(self.Pbm.subs(subs),dtype=np.float64)
-        self.Pbnp = _init_qobj_vector(self.Pb.subs(subs),dtype=np.float64) # x Phi0
+        self.Qbnp = self._init_qobj_vector(self.Qb.subs(subs),dtype=np.float64) # x 2e
+        self.Pbsm = self._init_qobj_vector(self.Pbm.subs(subs),dtype=np.float64)
+        self.Pbnp = self._init_qobj_vector(self.Pb.subs(subs),dtype=np.float64) # x Phi0
         
         # Generate exponentiated biases
         # FIXME: This should be removed by expressing the exponentiated biases in 
@@ -840,12 +840,12 @@ class HamilSpec(ds.TempData):
         for i in range(self.Pbsm.shape[0]):
             Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i,i]))
             Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i,i]))
-        self.Pexpbnp = _init_qobj_vector(np.diag(Pexp1))
-        self.Pexpbnpc = _init_qobj_vector(np.diag(Pexp2))
+        self.Pexpbnp = self._init_qobj_vector(np.diag(Pexp1))
+        self.Pexpbnpc = self._init_qobj_vector(np.diag(Pexp2))
         
         # Get branch inverse inductance matrix for branch current calculations
         if self.Hmode == 'node':
-            self.Linvnp_b = _init_qobj_vector(self.Linv_b.subs(subs),dtype=np.float64)
+            self.Linvnp_b = self._init_qobj_vector(self.Linv_b.subs(subs),dtype=np.float64)
         
         # Calculate subsystem derived parameters
         if self.subsystem is not None:
@@ -927,16 +927,16 @@ class HamilSpec(ds.TempData):
         #    self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
         
         # Substitute circuit parameters
-        self.Cinvnp = _init_qobj_vector(self.Cinv_pre.subs(subs),dtype=np.float64)
-        self.Linvnp = _init_qobj_vector(self.Linv_pre.subs(subs),dtype=np.float64)
-        self.Jvecnp = _init_qobj_vector(self.Jvec_pre.subs(subs),dtype=np.float64).T
+        self.Cinvnp = self._init_qobj_vector(self.Cinv_pre.subs(subs),dtype=np.float64)
+        self.Linvnp = self._init_qobj_vector(self.Linv_pre.subs(subs),dtype=np.float64)
+        self.Jvecnp = self._init_qobj_vector(self.Jvec_pre.subs(subs),dtype=np.float64).T
         if self.Hmode == 'node':
-            self.Linvnp_b = _init_qobj_vector(self.Linv_b_pre.subs(subs),dtype=np.float64)
+            self.Linvnp_b = self._init_qobj_vector(self.Linv_b_pre.subs(subs),dtype=np.float64)
         
         # Substitute external biases
-        self.Qbnp = _init_qobj_vector(self.Qb_pre.subs(subs),dtype=np.float64) # x 2e
-        self.Pbsm = _init_qobj_vector(self.Pbm_pre.subs(subs),dtype=np.float64)
-        #self.Pbnp = _init_qobj_vector(self.Pb_pre.subs(subs),dtype=np.float64) # x Phi0
+        self.Qbnp = self._init_qobj_vector(self.Qb_pre.subs(subs),dtype=np.float64) # x 2e
+        self.Pbsm = self._init_qobj_vector(self.Pbm_pre.subs(subs),dtype=np.float64)
+        #self.Pbnp = self._init_qobj_vector(self.Pb_pre.subs(subs),dtype=np.float64) # x Phi0
         
         # Generate exponentiated biases
         # FIXME: This should be removed by expressing the exponentiated biases in 
@@ -946,8 +946,8 @@ class HamilSpec(ds.TempData):
         for i in range(self.Pbsm.shape[0]):
             Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i,i]))
             Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i,i]))
-        self.Pexpbnp = _init_qobj_vector(np.diag(Pexp1))
-        self.Pexpbnpc = _init_qobj_vector(np.diag(Pexp2))
+        self.Pexpbnp = self._init_qobj_vector(np.diag(Pexp1))
+        self.Pexpbnpc = self._init_qobj_vector(np.diag(Pexp2))
         
         # Calculate subsystem derived parameters
         if self.subsystem is not None:
@@ -997,7 +997,7 @@ class HamilSpec(ds.TempData):
         # Branch currents
         P = self.Pnp #+self.Pbnp
         J = 0.5j*(util.mdot(self.Pexpbnpc,self.Dl_adj,self.Dr_adj) - util.mdot(self.Pexpbnp,self.Dl,self.Dr))
-        #R = _init_qobj_vector(self.cs.getNodeToBranchMatrix(),dtype=np.float64)
+        #R = self._init_qobj_vector(self.cs.getNodeToBranchMatrix(),dtype=np.float64)
         self.Iops = {}
         for i,edge in enumerate(edge_list):
             # Check if edge has an inductor
@@ -1109,7 +1109,7 @@ class HamilSpec(ds.TempData):
         
         # Use diagonal elements of the inverse capacitance matrix
         ret = {}
-        self.Cinvnp = _init_qobj_vector(self.Cinv.subs(p_subs).subs(subs),dtype=np.float64)
+        self.Cinvnp = self._init_qobj_vector(self.Cinv.subs(p_subs).subs(subs),dtype=np.float64)
         for i,pos in enumerate(self.getPosList()):
             ret[pos] = 0.5 * self.Cinvnp[i,i] * self.Ec_unit
         return ret
@@ -1176,7 +1176,7 @@ class HamilSpec(ds.TempData):
         
         # Use the Josephson vector
         ret = {}
-        self.Jvecnp = _init_qobj_vector(self.Jvec.subs(p_subs).subs(subs),dtype=np.float64).T
+        self.Jvecnp = self._init_qobj_vector(self.Jvec.subs(p_subs).subs(subs),dtype=np.float64).T
         for i,edge in enumerate(self.cs.getEdgeList()):
             ret[edge] = self.Jvecnp[0,i] * self.Ej_unit
         return ret
@@ -1882,8 +1882,8 @@ class HierarchicalHamilSpec(HamilSpec):
         
         # Update only the inverse Capacitance and Inductance matrices here
         # for building interaction term.
-        self.Cinvnp = _init_qobj_vector(self.cs.getInverseCapacitanceMatrix(mode=self.Hmode).subs(subs), dtype=np.float64)
-        self.Linvnp = _init_qobj_vector(self.cs.getInverseInductanceMatrix(mode=self.Hmode).subs(subs), dtype=np.float64)
+        self.Cinvnp = self._init_qobj_vector(self.cs.getInverseCapacitanceMatrix(mode=self.Hmode).subs(subs), dtype=np.float64)
+        self.Linvnp = self._init_qobj_vector(self.cs.getInverseInductanceMatrix(mode=self.Hmode).subs(subs), dtype=np.float64)
     
     ## Substitute parameters before a sweep to minimise total number of substitutions
     #
@@ -1922,12 +1922,12 @@ class HierarchicalHamilSpec(HamilSpec):
         subs = self._set_swept_params(params)
         
         # Substitute circuit parameters
-        self.Cinvnp = _init_qobj_vector(self.Cinv_pre.subs(subs),dtype=np.float64)
-        self.Linvnp = _init_qobj_vector(self.Linv_pre.subs(subs),dtype=np.float64)
+        self.Cinvnp = self._init_qobj_vector(self.Cinv_pre.subs(subs),dtype=np.float64)
+        self.Linvnp = self._init_qobj_vector(self.Linv_pre.subs(subs),dtype=np.float64)
         
         # Get branch inverse inductance matrix for branch current calculations
         if self.Hmode == 'node':
-            self.Linvnp_b = _init_qobj_vector(self.Linv_b_pre.subs(subs),dtype=np.float64)
+            self.Linvnp_b = self._init_qobj_vector(self.Linv_b_pre.subs(subs),dtype=np.float64)
         
         # Update all subsystem substitutions
         for name in self.subcircuit_hamil.keys():
