@@ -1,6 +1,12 @@
 import networkx as nx
 import graphviz as gv
 import pydot as pd
+import platform
+
+# FIXME: Make this more intelligent
+if platform.system() == 'Windows':
+    import os
+    os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
 
 class CircuitGraph:
     
