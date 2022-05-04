@@ -101,7 +101,7 @@ class NumericalSystem(ds.TempData):
     def getPosList(self):
         return self.cs.nodes
     
-    def getOperatorList(self, trunc,basis="charge", osc_impedance=50.0):
+    def getOperatorList(self, trunc, basis="charge", osc_impedance=50.0):
         Q = None
         P = None
         D = None
@@ -269,7 +269,7 @@ class NumericalSystem(ds.TempData):
                 Ilist[i] = qt.qeye(2*trunc+1)
         
         # Create mode operators
-        Olist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
+        Olist = np.empty([len(pos_list)], dtype=np.dtype(qt.Qobj))
         op_dict = {}
         for i,pos in enumerate(pos_list):
             self.circ_operators[pos] = []
@@ -620,10 +620,10 @@ class NumericalSystem(ds.TempData):
         self.wnp = dict(zip(self.getPosList(),[float(self.w[k].subs(subs))*self.units.getPrefactor("Freq") if self.w[k] is not None else None for k in self.getPosList()]))
         
         # Regenerate the oscillator basis operators FIXME
-        for k,v in self.Znp.items():
-            if v is None:
-                continue
-            self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
+        #for k,v in self.Znp.items():
+        #    if v is None:
+        #        continue
+        #    self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
         
         # Substitute circuit parameters
         self.Cinvnp = np.asmatrix(self.Cinv.subs(subs), dtype=np.float64)
@@ -725,19 +725,19 @@ class NumericalSystem(ds.TempData):
         
         # Get charging energy
         self.Hq = self.units.getPrefactor("Ec")*0.5*\
-        util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
+        util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)
         
         # Get flux energy
         self.Hp = self.units.getPrefactor("El")*0.5*\
-        util.mdot(self.Pnp.T, self.Linvnp, self.Pnp)[0, 0]
+        util.mdot(self.Pnp.T, self.Linvnp, self.Pnp)
         
         # Get Josephson energy
         self.Hj = -self.units.getPrefactor("Ej")*0.5*\
         (util.mdot(self.Jvecnp, self.Pexpbnpc, self.Dl_adj, self.Dr_adj) + \
-         util.mdot(self.Jvecnp, self.Pexpbnp, self.Dl, self.Dr))[0, 0]
+         util.mdot(self.Jvecnp, self.Pexpbnp, self.Dl, self.Dr))
         
         # Total Hamiltonian
-        self.Ht = (self.Hq+self.Hp+self.Hj)
+        self.Ht = (self.Hq+self.Hp+self.Hj)[0, 0]
         return self.Ht
     
     def getBranchCurrents(self):
@@ -833,9 +833,15 @@ class NumericalSystem(ds.TempData):
             i = self.getPosList().index(node)
             return 0.5 * self.Cinvnp[i,i] * self.units.getPrefactor("Ec")
     
-    def getFluxEnergies(self, edge=None):
-        # Use diagonal elements of the inverse inductance matrix
-        pass
+    def getFluxEnergies(self, node=None):
+        if node is None:
+            ret = {}
+            for i, pos in enumerate(self.getPosList()):
+                ret[pos] = 0.5 * self.Linvnp[i,i] * self.units.getPrefactor("El")
+            return ret
+        else:
+            i = self.getPosList().index(node)
+            return 0.5 * self.Linvnp[i,i] * self.units.getPrefactor("El")
     
     def getSymbolicJosephsonEnergies(self, edge=None):
         # Check for parameterisations
