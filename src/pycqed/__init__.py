@@ -1,6 +1,6 @@
 __all__ = [
     "CircuitGraph",
-    "SymbolicSystem"
+    "SymbolicSystem",
     "NumericalSystem",
     "ProjectData",
     "parameters",

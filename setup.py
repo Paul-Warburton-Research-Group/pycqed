@@ -1,21 +1,21 @@
-from setuptools import setup
+import setuptools
 import versioneer
-setup(
+setuptools.setup(
     name='PyCQED',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description='Python Circuit Quantum Electrodynamics Simulation Package',
+    description='Python Superconducting Circuit Quantum Electrodynamics Simulation Package',
     license='GNU',
     author='Louis Fry-Bouriaux',
     author_email='lfry512@googlemail.com',
     install_requires=[
-        'numpy>=1.17.0',
-        'scipy>=1.3.0',
-        'qutip>=4.4.1',
-        'networkx>=2.3',
-        'sympy>=1.4',
-        'matplotlib>=3.0.3',
-        'SchemDraw>=0.4.0'
+        'numpy>=1.21.0',
+        'scipy>=1.8.0',
+        'qutip>=4.6.2',
+        'networkx>=2.8',
+        'sympy>=1.10.1',
+        'graphviz>=0.20',
+        'pydot>=1.4.2'
     ],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
@@ -25,17 +25,14 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering :: Physics'
     ],
-    keywords='quantum circuit simulation, circuit quantum electrodynamics',
+    keywords='superconducting quantum circuit simulation, circuit quantum electrodynamics',
     platforms=['Linux','Windows'],
-    python_requires='!=2.*, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, >=3.4',
-    packages=['pycqed'],
-    package_dir={'pycqed':'pycqed/src'}
+    python_requires='>=3.8',
+    packages=setuptools.find_packages(where='src'),
+    package_dir={'':'src'}
 )
 
 

@@ -1,0 +1,3 @@
+pycqed/_version.py export-subst
+pycqed/src/_version.py export-subst
+src/pycqed/_version.py export-subst

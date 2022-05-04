@@ -44,7 +44,7 @@ def get_config():
     cfg.style = ""
     cfg.tag_prefix = ""
     cfg.parentdir_prefix = "pycqed-"
-    cfg.versionfile_source = "pycqed/src/_version.py"
+    cfg.versionfile_source = "src/pycqed/_version.py"
     cfg.verbose = False
     return cfg
 

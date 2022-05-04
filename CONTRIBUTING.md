@@ -9,7 +9,6 @@ There are many things to develop, these are the more important ones in order of 
  * Interface with Huo's AME solver.
  * Sweeping multiple parameters at the same time, not necessarily on a grid.
  * Analysis of the classical potential.
- * Implement time dependence without encroaching on `qutip`'s method of solving time dependence.
 
 These are the less important ones but would increase ease of use significantly:
 
