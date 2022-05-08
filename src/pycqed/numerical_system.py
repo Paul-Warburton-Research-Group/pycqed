@@ -17,9 +17,9 @@ class NumericalSystem(ds.TempData):
     
     ## Available basis representations
     __basis_repr = [
-        "charge",
-        "flux",
-        "osc",
+        "charge", 
+        "flux", 
+        "oscillator", 
         "custom"
     ]
     
@@ -33,11 +33,11 @@ class NumericalSystem(ds.TempData):
     
     ## Consider listing dependencies here too
     __eval_avail = [
-        "getHamiltonian",
-        "getBranchCurrents",
-        "getNodeVoltages",
-        "getChargingEnergies",
-        "getJosephsonEnergies",
+        "getHamiltonian", 
+        "getBranchCurrents", 
+        "getNodeVoltages", 
+        "getChargingEnergies", 
+        "getJosephsonEnergies", 
         "getResonatorResponse"
     ]
     
@@ -57,12 +57,14 @@ class NumericalSystem(ds.TempData):
         
         # Nested dictionary for DoF operators, keyed by the relevant mode
         self.circ_operators = {}
+        self.operator_data = {}
         
         # Mode truncations and basis representation, also indicates whether
         # operators need to be considered for regeneration when parameters are changed.
         self.mode_truncations = {}
         
         # Define the parameter collection
+        # FIXME: Symbols to be integrated in the ParamCollection class
         self.all_params_sym = self.cs.getParameterDict()
         self.params = pa.ParamCollection(list(self.all_params_sym.keys()))
         
@@ -74,12 +76,6 @@ class NumericalSystem(ds.TempData):
         self.RmatT = 1.0
         self.Rmatinv = 1.0
         self.RmatTinv = 1.0
-        
-        # For getting diagonal matrix elements
-        self.getter_vecs = {}
-        p = self.getPosList()
-        for i, pos in enumerate(p):
-            self.getter_vecs[pos] = sy.Matrix(qt.basis(len(p), i).data.todense())
         
         # Oscillator characteristics
         self.osc_params = {}
@@ -98,104 +94,21 @@ class NumericalSystem(ds.TempData):
     #       Operator Generation and Functions
     ###################################################################################################################
     
-    def getPosList(self):
+    def getNodeList(self):
         return self.cs.nodes
     
-    def getOperatorList(self, trunc, basis="charge", osc_impedance=50.0):
-        Q = None
-        P = None
-        D = None
-        Ddag = None
-        if basis == "charge":
-            # For IJ modes the states are the eigenvectors of the following matrix
-            q,s = (-qt.num(2*trunc + 1,trunc)).eigenstates()
-            
-            # Construct the flux states
-            phik_list = []
-            phik = None
-            qm = [float(i)-trunc for i in range(2*trunc + 1)]
-            for k in qm:
-                phik = qt.basis(2*trunc + 1,0) - 1
-                for j,qi in enumerate(qm):
-                    phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
-                phik_list.append(phik)
-            
-            # From this build the flux operator
-            phik_eigvals = [(float(i)-trunc)/(2*trunc + 1) for i in range(2*trunc + 1)]
-            P = qt.qeye(2*trunc + 1) - qt.qeye(2*trunc + 1)
-            for i,phik in enumerate(phik_list):
-                P += phik_eigvals[i]*phik*phik.dag()
-            
-            # Get a simple charge number operator
-            Q = -qt.num(2*trunc + 1)+float(trunc)
-            
-            # Generate displacement operators by first diagonalising the flux operator
-            E,V = np.linalg.eigh(P.data.todense())
-            
-            # Create transformation matrices
-            U = qt.Qobj(V)
-            Uinv = qt.Qobj(np.linalg.inv(V))
-            
-            # Exponentiate the diagonal matrix
-            D = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1,2*trunc)*qt.basis(2*trunc+1,0).dag()#qt.basis(2*trunc+1,0)*qt.basis(2*trunc+1,2*trunc).dag()
-            Ddag = D.dag()
-            
-        elif basis == "osc":
-            
-            # Using oscillator basis
-            a = 1.0
-            Q = 1j*np.sqrt(1/(2*osc_impedance))*(qt.create(trunc) - qt.destroy(trunc))*self.units.getPrefactor("ChgOsc")
-            P = np.sqrt(osc_impedance/2)*(qt.create(trunc) + qt.destroy(trunc))*self.units.getPrefactor("FlxOsc")
-            Pp = a*2*np.pi/pc.phi0*np.sqrt(pc.hbar)*P/self.units.getPrefactor("FlxOsc")
-            
-            # Generate displacement operators by first diagonalising the flux operator
-            E,V = np.linalg.eigh(Pp.data.todense())
-            
-            # Create transformation matrices
-            U = qt.Qobj(V)
-            Uinv = qt.Qobj(np.linalg.inv(V))
-            
-            # Exponentiate the diagonal matrix
-            D = U*qt.Qobj(np.diag(np.exp(1j*E)))*Uinv
-            Ddag = D.dag()
-        elif basis == "flux":
-            raise Exception("flux basis not implemented yet.")
-        return Q,P,D,Ddag
-    
-    def getSymbolicOscillatorParams(self):
+    def getNodeIndex(self, node):
+        return self.cs.nodes.index(node)
         
-        # Check truncations were defined
-        if len(self.mode_truncations) != len(self.getPosList()):
-            raise Exception("mode types and truncations not yet set. Use setTruncation() for each degree of freedom first.")
-        
-        # Check oscillator basis is being used anywhere
-        #if "osc" not in [self.mode_truncations[k][1] for k in self.getPosList()]:
-        #    return
-        
-        # Check inv inductance matrix is diagonal
-        #if not self.cs.getInverseInductanceMatrix(mode=self.Hmode).is_diagonal():
-        #    raise Exception("inverse inductance matrix is not diagonal. Perform a transformation first.")
-        Linv = self.RmatTinv*self.cs.getInverseInductanceMatrix()*self.Rmatinv
-        Cinv = self.Rmat*self.cs.getInverseCapacitanceMatrix()*self.RmatT
-        
-        # Retrieve oscillator frequency and impedance symbolic expressions
-        for pos in self.getPosList():
-            Li = self.getter_vecs[pos].transpose()*Linv*self.getter_vecs[pos]
-            Ci = self.getter_vecs[pos].transpose()*Cinv*self.getter_vecs[pos]
-            if Li[0] == 0 or Ci[0] == 0:
-                self.osc_params[pos] = None
-            else:
-                self.osc_params[pos] = {"frequency":sy.sqrt(Li[0]*Ci[0]), "impedance":sy.sqrt(Ci[0]/Li[0])}
-    
     def getCommutator(self, Q, P, basis="charge"):
         if basis == "charge": # Need to figure out the correction for this case
             dims = 2*pc.e*pc.phi0/pc.hbar
-            return qt.commutator(P,Q)*dims
-        elif basis == "osc":
+            return qt.commutator(P, Q)*dims
+        elif basis == "oscillator":
             
             # Get highest number operator eigenvalue and associated eigenstate
             enum = Q.shape[0]
-            vnum = qt.basis(enum,enum-1)
+            vnum = qt.basis(enum, enum-1)
             
             # Create the correction matrix
             mat = 1 - (enum)*vnum*vnum.dag()
@@ -204,7 +117,7 @@ class NumericalSystem(ds.TempData):
             corrmat = qt.Qobj(np.linalg.inv(mat.data.todense()))
             
             # Get the correct commutator
-            return qt.commutator(P,Q)*corrmat
+            return qt.commutator(P, Q)*corrmat
     
     def setTruncation(self, pos, trunc, basis):
         """ Sets the truncation of the operators associated with the given branch or node.
@@ -222,9 +135,9 @@ class NumericalSystem(ds.TempData):
         
         :return: None
         """
-        if pos not in self.getPosList():
+        if pos not in self.getNodeList():
             raise Exception("pos '%s' does not exist." % repr(pos))
-        self.mode_truncations[pos] = (trunc, basis, True if basis == "osc" else False)
+        self.mode_truncations[pos] = (trunc, basis, True if basis == "oscillator" else False)
     
     # FIXME: Implement me
     def setTruncations(self):
@@ -242,9 +155,144 @@ class NumericalSystem(ds.TempData):
             trunc, basis, update = self.mode_truncations[m]
             if basis == "charge":
                 ret *= (2*trunc+1)
-            elif basis == "osc":
+            elif basis == "oscillator":
                 ret *= (trunc)
         return ret
+    
+    def getOperatorList(self, node):
+        Q = None
+        P = None
+        D = None
+        Ddag = None
+        trunc = self.operator_data[node]["truncation"]
+        basis = self.operator_data[node]["basis"]
+        impedance = self.operator_data[node]["impedance"]
+        osc_impedance = None
+        if impedance is not None:
+            subs = {}
+            for k, v in self.all_params_sym.items():
+                subs[v] = self.params.getParameterValue(k)
+            osc_impedance = float(impedance.subs(subs))*self.units.getPrefactor("Impe")
+            if osc_impedance != osc_impedance or osc_impedance == 0.0:
+                raise Exception("Parameters not set for oscillator mode '%i'." % node)
+        
+        if basis == "charge":
+            # For IJ modes the charge states are the eigenvectors of the following matrix
+            q, s = (-qt.num(2*trunc + 1, trunc)).eigenstates()
+            
+            # Construct the flux states
+            phik_list = []
+            phik = None
+            qm = [float(i)-trunc for i in range(2*trunc + 1)]
+            for k in qm:
+                phik = qt.basis(2*trunc + 1, 0) - 1
+                for j, qi in enumerate(qm):
+                    phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
+                phik_list.append(phik)
+            
+            # From this build the flux operator
+            phik_eigvals = [(float(i)-trunc)/(2*trunc + 1) for i in range(2*trunc + 1)]
+            P = qt.qeye(2*trunc + 1) - qt.qeye(2*trunc + 1)
+            for i, phik in enumerate(phik_list):
+                P += phik_eigvals[i]*phik*phik.dag()
+            
+            # Get a simple charge number operator
+            Q = -qt.num(2*trunc + 1)+float(trunc)
+            
+            # Generate displacement operators by first diagonalising the flux operator
+            E, V = np.linalg.eigh(P.data.todense())
+            
+            # Create transformation matrices
+            U = qt.Qobj(V)
+            Uinv = qt.Qobj(np.linalg.inv(V))
+            
+            # Exponentiate the diagonal matrix
+            D = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
+            Ddag = D.dag()
+            
+        elif basis == "oscillator":
+            # Using oscillator basis
+            a = 1.0
+            Q = 1j*np.sqrt(1/(2*osc_impedance))*(qt.create(trunc) - qt.destroy(trunc))*self.units.getPrefactor("ChgOsc")
+            P = np.sqrt(osc_impedance/2)*(qt.create(trunc) + qt.destroy(trunc))*self.units.getPrefactor("FlxOsc")
+            Pp = a*2*np.pi/pc.phi0*np.sqrt(pc.hbar)*P/self.units.getPrefactor("FlxOsc")
+            
+            # Generate displacement operators by first diagonalising the flux operator
+            E, V = np.linalg.eigh(Pp.data.todense())
+            
+            # Create transformation matrices
+            U = qt.Qobj(V)
+            Uinv = qt.Qobj(np.linalg.inv(V))
+            
+            # Exponentiate the diagonal matrix
+            D = U*qt.Qobj(np.diag(np.exp(1j*E)))*Uinv
+            Ddag = D.dag()
+        elif basis == "flux":
+            # Flux operator is based on a flux grid
+            pmax = self.operator_data[node]["flux_max"]
+            grid = np.linspace(-pmax, pmax, 2*trunc+1)
+            P = qt.Qobj(np.diag(grid))
+            
+            q, s = P.eigenstates()
+            
+            # Construct the flux states
+            phik_list = []
+            phik = None
+            qm = [float(i)-trunc for i in range(2*trunc + 1)]
+            for k in qm:
+                phik = qt.basis(2*trunc + 1, 0) - 1
+                for j, qi in enumerate(qm):
+                    phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
+                phik_list.append(phik)
+
+            # From this build the flux operator
+            phik_eigvals = [(float(i)-trunc)/(2*trunc + 1) for i in range(2*trunc + 1)]
+            Q = qt.qeye(2*trunc + 1) - qt.qeye(2*trunc + 1)
+            for i, phik in enumerate(phik_list):
+                Q += phik_eigvals[i]*phik*phik.dag()
+            
+            Q = Q/(grid[1]-grid[0])
+            
+            # Generate displacement operators by first diagonalising the flux operator
+            E, V = np.linalg.eigh(P.data.todense())
+            
+            # Create transformation matrices
+            U = qt.Qobj(V)
+            Uinv = qt.Qobj(np.linalg.inv(V))
+            
+            # Exponentiate the diagonal matrix
+            D = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
+            Ddag = D.dag()
+            
+        return Q, P, D, Ddag
+    
+    def configureOperator(self, node, trunc, basis, fmax=4.0):
+        if node not in self.getNodeList():
+            raise Exception("Node '%i' is not a valid circuit node." % node)
+        
+        # Get the operator circuit-dependent parameters
+        impedance = None
+        frequency = None
+        update = False
+        flux_max = None
+        if basis == "oscillator":
+            update = True
+            index = self.getNodeIndex(node)
+            Linv = self.cs.getInverseInductanceMatrix()
+            Cinv = self.cs.getInverseCapacitanceMatrix()
+            impedance = sy.sqrt(Cinv[index, index]/Linv[index, index])
+            frequency = sy.sqrt(Linv[index, index]*Cinv[index, index])
+        elif basis == "flux":
+            flux_max = fmax
+        
+        self.operator_data[node] = {
+            "truncation": trunc, 
+            "basis": basis, 
+            "update": update, 
+            "impedance": impedance, 
+            "frequency": frequency,
+            "flux_max": flux_max
+        }
     
     ## Expand operator Hilbert spaces and update mapping to associated symbols
     def getExpandedOperatorsMap(self):
@@ -252,33 +300,31 @@ class NumericalSystem(ds.TempData):
         
         :return: None
         """
-        #
-        # FIXME: Need to pass in the oscillator basis parameters here
-        #
         
         # Get the pos list for indexing the DoFs
-        pos_list = self.getPosList()
+        node_list = self.getNodeList()
         
         # Generate the Hilbert space expanders
-        Ilist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
-        for i,pos in enumerate(pos_list):
-            trunc, basis, update = self.mode_truncations[pos]
-            if basis == "osc":
+        Ilist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
+        for i, node in enumerate(node_list):
+            trunc = self.operator_data[node]["truncation"]
+            basis = self.operator_data[node]["basis"]
+            if basis == "oscillator":
                 Ilist[i] = qt.qeye(trunc)
             elif basis == "charge":
-                Ilist[i] = qt.qeye(2*trunc+1)
+                Ilist[i] = qt.qeye(2*trunc + 1)
         
         # Create mode operators
-        Olist = np.empty([len(pos_list)], dtype=np.dtype(qt.Qobj))
+        Olist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
         op_dict = {}
-        for i,pos in enumerate(pos_list):
-            self.circ_operators[pos] = []
+        for i, node in enumerate(node_list):
             op_dict = {}
-            trunc, basis, update = self.mode_truncations[pos]
-            Q,P,D,Ddag = self.getOperatorList(trunc,basis=basis)
+            trunc = self.operator_data[node]["truncation"]
+            basis = self.operator_data[node]["basis"]
+            Q, P, D, Ddag = self.getOperatorList(node)
             
             # Indices minus the current index
-            indices = list(range(len(pos_list)))
+            indices = list(range(len(node_list)))
             indices.remove(i)
             
             # Current index is the operator
@@ -302,17 +348,17 @@ class NumericalSystem(ds.TempData):
                 Olist[j] = Ilist[j]
             op_dict["disp_adj"] = qt.tensor(Olist)
             
-            self.circ_operators[pos] = op_dict.copy()
+            self.circ_operators[node] = op_dict.copy()
     
-    def regenOps(self, pos, params={"basis":"osc","osc_impedance":50.0}):
+    def regenOps(self, pos, params={"basis":"osc", "osc_impedance":50.0}):
         
         # Get the pos list for indexing the DoFs
-        pos_list = self.getPosList()
-        i = pos_list.index(pos)
+        node_list = self.getNodeList()
+        i = node_list.index(pos)
         
         # Generate the Hilbert space expanders
-        Ilist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
-        for i,pos in enumerate(pos_list):
+        Ilist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
+        for i, pos in enumerate(node_list):
             trunc, basis, update = self.mode_truncations[pos]
             if basis == "osc":
                 Ilist[i] = qt.qeye(trunc)
@@ -320,14 +366,14 @@ class NumericalSystem(ds.TempData):
                 Ilist[i] = qt.qeye(2*trunc+1)
         
         # Indices minus the current index
-        indices = list(range(len(pos_list)))
+        indices = list(range(len(node_list)))
         indices.remove(i)
         
         # Edit the circuit operators
         op_dict = {}
-        Olist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
+        Olist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
         trunc, basis, update = self.mode_truncations[pos]
-        Q,P,D,Ddag = self.getOperatorList(trunc,**params)
+        Q, P, D, Ddag = self.getOperatorList(trunc, **params)
         
         Olist[i] = Q
         for j in indices:
@@ -351,15 +397,15 @@ class NumericalSystem(ds.TempData):
         
         self.circ_operators[pos] = op_dict.copy()
     
-    def regenOp(self, pos, params={"basis":"osc","osc_impedance":50.0}):
+    def regenOp(self, pos, params={"basis":"osc", "osc_impedance":50.0}):
         
         # Get the pos list for indexing the DoFs
-        pos_list = self.getPosList()
-        i = pos_list.index(pos)
+        node_list = self.getNodeList()
+        i = node_list.index(pos)
         
         # Generate the Hilbert space expanders
-        Ilist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
-        for i,pos in enumerate(pos_list):
+        Ilist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
+        for i, pos in enumerate(node_list):
             trunc, basis, update = self.mode_truncations[pos]
             if basis == "osc":
                 Ilist[i] = qt.qeye(trunc)
@@ -367,14 +413,14 @@ class NumericalSystem(ds.TempData):
                 Ilist[i] = qt.qeye(2*trunc+1)
         
         # Indices minus the current index
-        indices = list(range(len(pos_list)))
+        indices = list(range(len(node_list)))
         indices.remove(i)
         
         # Edit the circuit operators
         op_dict = {}
-        Olist = np.empty([len(pos_list)],dtype=np.dtype(qt.Qobj))
+        Olist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
         trunc, basis, update = self.mode_truncations[pos]
-        Q,P,D,Ddag = self.getOperatorList(trunc,**params)
+        Q, P, D, Ddag = self.getOperatorList(trunc, **params)
         
         Olist[i] = Q
         for j in indices:
@@ -411,7 +457,7 @@ class NumericalSystem(ds.TempData):
         self.RmatTinv = np.linalg.inv(self.Rmat.T)
     
     def getChargeOpVector(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs = self.cs.getDoFSymbolList("charge")
         pos_ops = {k: v["charge"] for k, v in self.circ_operators.items()}
 
@@ -424,7 +470,7 @@ class NumericalSystem(ds.TempData):
         self.Qnp = self._init_qobj_vector(arr, dtype=object)
     
     def getFluxOpVector(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs = self.cs.getDoFSymbolList("flux")
         pos_ops = {k: v["flux"] for k, v in self.circ_operators.items()}
 
@@ -437,15 +483,15 @@ class NumericalSystem(ds.TempData):
         self.Pnp = self._init_qobj_vector(arr, dtype=object)
     
     def getRightDispOpVector(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs1 = self.cs.getDoFSymbolList("disp")
         pos_dofs2 = self.cs.getDoFSymbolList("disp_adj")
-        pos_ops1 = {k:v["disp"] for k,v in self.circ_operators.items()}
-        pos_ops2 = {k:v["disp_adj"] for k,v in self.circ_operators.items()}
+        pos_ops1 = {k:v["disp"] for k, v in self.circ_operators.items()}
+        pos_ops2 = {k:v["disp_adj"] for k, v in self.circ_operators.items()}
 
         # Reverse symbol map
-        pos_dofs_rev1 = {v:k for k,v in pos_dofs1.items()}
-        pos_dofs_rev2 = {v:k for k,v in pos_dofs2.items()}
+        pos_dofs_rev1 = {v:k for k, v in pos_dofs1.items()}
+        pos_dofs_rev2 = {v:k for k, v in pos_dofs2.items()}
         arr = []
         for sym in self.cs.getRightDisplacementOpVector(adjoint=False):
             if sym == 1:
@@ -460,15 +506,15 @@ class NumericalSystem(ds.TempData):
         self.Dr = self._init_qobj_vector(arr, dtype=object)
     
     def getRightDispAdjOpVector(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs1 = self.cs.getDoFSymbolList("disp_adj")
         pos_dofs2 = self.cs.getDoFSymbolList("disp")
-        pos_ops1 = {k:v["disp_adj"] for k,v in self.circ_operators.items()}
-        pos_ops2 = {k:v["disp"] for k,v in self.circ_operators.items()}
+        pos_ops1 = {k:v["disp_adj"] for k, v in self.circ_operators.items()}
+        pos_ops2 = {k:v["disp"] for k, v in self.circ_operators.items()}
 
         # Reverse symbol map
-        pos_dofs_rev1 = {v:k for k,v in pos_dofs1.items()}
-        pos_dofs_rev2 = {v:k for k,v in pos_dofs2.items()}
+        pos_dofs_rev1 = {v:k for k, v in pos_dofs1.items()}
+        pos_dofs_rev2 = {v:k for k, v in pos_dofs2.items()}
         arr = []
         for sym in self.cs.getRightDisplacementOpVector(adjoint=True):
             if sym == 1:
@@ -483,7 +529,7 @@ class NumericalSystem(ds.TempData):
         self.Dr_adj = self._init_qobj_vector(arr, dtype=object)
     
     def getLeftDispOpMatrix(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs1 = self.cs.getDoFSymbolList("disp")
         pos_dofs2 = self.cs.getDoFSymbolList("disp_adj")
         pos_ops1 = {k: v["disp"] for k, v in self.circ_operators.items()}
@@ -506,7 +552,7 @@ class NumericalSystem(ds.TempData):
         self.Dl = np.asmatrix(np.diag(np.array(arr, dtype=object)))
     
     def getLeftDispAdjOpMatrix(self):
-        pos = self.getPosList()
+        pos = self.getNodeList()
         pos_dofs1 = self.cs.getDoFSymbolList("disp_adj")
         pos_dofs2 = self.cs.getDoFSymbolList("disp")
         pos_ops1 = {k: v["disp_adj"] for k, v in self.circ_operators.items()}
@@ -539,7 +585,7 @@ class NumericalSystem(ds.TempData):
     def prepareOperators(self):
         
         # Generate symbolics
-        self.getSymbolicOscillatorParams()
+        #self.getSymbolicOscillatorParams()
         self.getSymbolicExpressions()
         
         # Generate numericals
@@ -552,7 +598,7 @@ class NumericalSystem(ds.TempData):
     def getSymbolicExpressions(self):
         
         # Check for parameterisations
-        subs = dict([(self.all_params_sym[k],v) for k,v in self.params_subs.items()])
+        subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
         
         # FIXME: None of this will work when coordinate transformations are applied
         # Generate final symbolic expressions
@@ -568,8 +614,6 @@ class NumericalSystem(ds.TempData):
         self.Qb = self.cs.getChargeBiasVector().subs(subs)
         self.Pb = self.cs.getFluxBiasVector(mode="branch").subs(subs)
         self.Pbm = self.cs.getFluxBiasMatrix(mode="branch").subs(subs)
-        self.Z = dict(zip(self.getPosList(),[self.osc_params[k]["impedance"].subs(subs) if self.osc_params[k] is not None else None for k in self.getPosList()]))
-        self.w = dict(zip(self.getPosList(),[self.osc_params[k]["frequency"].subs(subs) if self.osc_params[k] is not None else None for k in self.getPosList()]))
     
     ###################################################################################################################
     #       Parameterisation Functions
@@ -584,7 +628,7 @@ class NumericalSystem(ds.TempData):
         self.all_params_sym.update(name_map)
         
         # Add the new parameters
-        for k,v in name_map.items():
+        for k, v in name_map.items():
             self.params.addParameter(k)
         
         # FIXME: Remove old_param if it does not appear in expr
@@ -604,26 +648,16 @@ class NumericalSystem(ds.TempData):
     def substitute(self, params_dict):
         
         # Set the parameter values
-        for k,v in params_dict.items():
-            self.params.setParameterValue(k,v)
+        for k, v in params_dict.items():
+            self.params.setParameterValue(k, v)
         
         # If some parameters are omitted from params_dict, those saved in self.params will be used
         subs = {}
-        for k,v in self.all_params_sym.items():
+        for k, v in self.all_params_sym.items():
             subs[v] = self.params.getParameterValue(k)
         
         # Substitute the resonator parameters if any
         subs = self._get_resonator_substitutions(subs)
-        
-        # Get the oscillator parameters
-        self.Znp = dict(zip(self.getPosList(),[float(self.Z[k].subs(subs))*self.units.getPrefactor("Impe") if self.Z[k] is not None else None for k in self.getPosList()]))
-        self.wnp = dict(zip(self.getPosList(),[float(self.w[k].subs(subs))*self.units.getPrefactor("Freq") if self.w[k] is not None else None for k in self.getPosList()]))
-        
-        # Regenerate the oscillator basis operators FIXME
-        #for k,v in self.Znp.items():
-        #    if v is None:
-        #        continue
-        #    self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
         
         # Substitute circuit parameters
         self.Cinvnp = np.asmatrix(self.Cinv.subs(subs), dtype=np.float64)
@@ -641,8 +675,8 @@ class NumericalSystem(ds.TempData):
         Pexp1 = []
         Pexp2 = []
         for i in range(self.Pbsm.shape[0]):
-            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i,i]))
-            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i,i]))
+            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
+            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
         self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
         self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
         
@@ -654,7 +688,7 @@ class NumericalSystem(ds.TempData):
         # FIXME: Do we want to use only prepareOperators() to register parameterisations, or do we leave this as it is?
         
         # Check for parameterisations
-        p_subs = dict([(self.all_params_sym[k],v) for k,v in self.params_subs.items()])
+        p_subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
         
         # Set the parameters that are not being swept
         subs = self._set_non_swept_params()
@@ -672,12 +706,10 @@ class NumericalSystem(ds.TempData):
         self.Jvec_pre = self.cs.getJosephsonVector().subs(p_subs).subs(subs)
         self.Qb_pre = self.cs.getChargeBiasVector().subs(p_subs).subs(subs)
         self.Pbm_pre = self.cs.getFluxBiasMatrix(mode="branch").subs(p_subs).subs(subs)
-        self.getSymbolicOscillatorParams()
-        self.Z_pre = dict(zip(self.getPosList(),[self.osc_params[k]["impedance"].subs(p_subs).subs(subs) if self.osc_params[k] is not None else None for k in self.getPosList()]))
-        self.w_pre = dict(zip(self.getPosList(),[self.osc_params[k]["frequency"].subs(p_subs).subs(subs) if self.osc_params[k] is not None else None for k in self.getPosList()]))
+        #self.getSymbolicOscillatorParams()
         
         # Find which operators will need to be regenerated for each sweep
-        self._get_regen_ops_list()
+        #self._get_regen_ops_list()
     
     def _postsub(self, params):
     
@@ -688,12 +720,12 @@ class NumericalSystem(ds.TempData):
         #subs = self._get_resonator_substitutions(subs)
         
         # Get the oscillator parameters FIXME
-        #self.Znp = dict(zip(self.getPosList(),[float(self.Z_pre[k].subs(subs))*self.units.getPrefactor("Impe") if self.Z[k] is not None else None for k in self.getPosList()]))
-        #self.wnp = dict(zip(self.getPosList(),[float(self.w_pre[k].subs(subs))*self.units.getPrefactor("Freq") if self.w[k] is not None else None for k in self.getPosList()]))
+        #self.Znp = dict(zip(self.getNodeList(), [float(self.Z_pre[k].subs(subs))*self.units.getPrefactor("Impe") if self.Z[k] is not None else None for k in self.getNodeList()]))
+        #self.wnp = dict(zip(self.getNodeList(), [float(self.w_pre[k].subs(subs))*self.units.getPrefactor("Freq") if self.w[k] is not None else None for k in self.getNodeList()]))
         
         # Regenerate required operators FIXME
         #for k in self.Rlist:
-        #    self.regenOp(k,params={"basis":"osc","osc_impedance":self.Znp[k]})
+        #    self.regenOp(k, params={"basis":"osc", "osc_impedance":self.Znp[k]})
         
         # Substitute circuit parameters
         self.Cinvnp = np.asmatrix(self.Cinv_pre.subs(subs), dtype=np.float64)
@@ -704,7 +736,7 @@ class NumericalSystem(ds.TempData):
         # Substitute external biases
         self.Qbnp = np.asmatrix(self.Qb_pre.subs(subs), dtype=np.float64) # x 2e
         self.Pbsm = np.asmatrix(self.Pbm_pre.subs(subs), dtype=np.float64)
-        #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs),dtype=np.float64) # x Phi0
+        #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs), dtype=np.float64) # x Phi0
         
         # Generate exponentiated biases
         # FIXME: This should be removed by expressing the exponentiated biases in 
@@ -712,8 +744,8 @@ class NumericalSystem(ds.TempData):
         Pexp1 = []
         Pexp2 = []
         for i in range(self.Pbsm.shape[0]):
-            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i,i]))
-            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i,i]))
+            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
+            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
         self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
         self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
     
@@ -749,7 +781,7 @@ class NumericalSystem(ds.TempData):
         # Branch currents
         P = self.Pnp #+self.Pbnp
         J = 0.5j*(util.mdot(self.Pexpbnpc, self.Dl_adj, self.Dr_adj) - util.mdot(self.Pexpbnp, self.Dl, self.Dr))
-        #R = np.asmatrix(self.cs.getNodeToBranchMatrix(),dtype=np.float64)
+        #R = np.asmatrix(self.cs.getNodeToBranchMatrix(), dtype=np.float64)
         self.Iops = {}
         for i, edge in enumerate(edge_list):
             # Check if edge has an inductor
@@ -765,7 +797,7 @@ class NumericalSystem(ds.TempData):
                     P2 = 0.0
 
                 # Take difference of node fluxes of corresponding branch and use *branch* inverse inductance matrix
-                #self.Iops[edge] = self.units.getPrefactor("IopL")*(P2-P1)*util.mdot(R,self.Linvnp)[i,i]
+                #self.Iops[edge] = self.units.getPrefactor("IopL")*(P2-P1)*util.mdot(R, self.Linvnp)[i, i]
                 self.Iops[edge] = self.units.getPrefactor("IopL")*(P2 - P1)*self.Linvnp_b[i, i]
             else:
                 self.Iops[edge] = self.units.getPrefactor("IopJ")*J.T[0, i]*self.Jvecnp[0, i]
@@ -812,44 +844,44 @@ class NumericalSystem(ds.TempData):
     
     def getSymbolicChargingEnergies(self, node=None):
         # Check for parameterisations
-        p_subs = dict([(self.all_params_sym[k],v) for k,v in self.params_subs.items()])
+        p_subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
         
         if node is None:
             ret = {}
-            for i, pos in enumerate(self.getPosList()):
-                ret[pos] = 0.5 * self.Cinv.subs(p_subs)[i,i] * self.cs.qcp**2
+            for i, pos in enumerate(self.getNodeList()):
+                ret[pos] = 0.5 * self.Cinv.subs(p_subs)[i, i] * self.cs.qcp**2
             return ret
         else:
-            i = self.getPosList().index(node)
-            return 0.5 * self.Cinv.subs(p_subs)[i,i] * self.cs.qcp**2
+            i = self.getNodeList().index(node)
+            return 0.5 * self.Cinv.subs(p_subs)[i, i] * self.cs.qcp**2
     
     def getChargingEnergies(self, node=None):
         if node is None:
             ret = {}
-            for i, pos in enumerate(self.getPosList()):
-                ret[pos] = 0.5 * self.Cinvnp[i,i] * self.units.getPrefactor("Ec")
+            for i, pos in enumerate(self.getNodeList()):
+                ret[pos] = 0.5 * self.Cinvnp[i, i] * self.units.getPrefactor("Ec")
             return ret
         else:
-            i = self.getPosList().index(node)
-            return 0.5 * self.Cinvnp[i,i] * self.units.getPrefactor("Ec")
+            i = self.getNodeList().index(node)
+            return 0.5 * self.Cinvnp[i, i] * self.units.getPrefactor("Ec")
     
     def getFluxEnergies(self, node=None):
         if node is None:
             ret = {}
-            for i, pos in enumerate(self.getPosList()):
-                ret[pos] = 0.5 * self.Linvnp[i,i] * self.units.getPrefactor("El")
+            for i, pos in enumerate(self.getNodeList()):
+                ret[pos] = 0.5 * self.Linvnp[i, i] * self.units.getPrefactor("El")
             return ret
         else:
-            i = self.getPosList().index(node)
-            return 0.5 * self.Linvnp[i,i] * self.units.getPrefactor("El")
+            i = self.getNodeList().index(node)
+            return 0.5 * self.Linvnp[i, i] * self.units.getPrefactor("El")
     
     def getSymbolicJosephsonEnergies(self, edge=None):
         # Check for parameterisations
-        p_subs = dict([(self.all_params_sym[k],v) for k,v in self.params_subs.items()])
+        p_subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
         
         if edge is None:
             ret = {}
-            for i,edge in enumerate(self.cs.edges):
+            for i, edge in enumerate(self.cs.edges):
                 ret[edge] = self.Jvec.subs(p_subs)[i] * self.cs.phi0/(2*self.cs.pi)
             return ret
         else:
@@ -859,12 +891,12 @@ class NumericalSystem(ds.TempData):
     def getJosephsonEnergies(self, edge=None):
         if edge is None:
             ret = {}
-            for i,edge in enumerate(self.cs.edges):
-                ret[edge] = self.Jvecnp[0,i] * self.units.getPrefactor("Ej")
+            for i, edge in enumerate(self.cs.edges):
+                ret[edge] = self.Jvecnp[0, i] * self.units.getPrefactor("Ej")
             return ret
         else:
             i = self.cs.edges.index(edge)
-            return self.Jvecnp[0,i] * self.units.getPrefactor("Ej")
+            return self.Jvecnp[0, i] * self.units.getPrefactor("Ej")
     
     def getResonatorResponse(self, E, V, nmax=100, cpl_node=None):
         
@@ -879,8 +911,8 @@ class NumericalSystem(ds.TempData):
         wrl = self.getParameterValue('f%irl'%cpl_node)
         
         # Get the operator associated with selected node
-        index = self.getPosList().index(cpl_node)
-        Op = self.Qnp[index,0] + self.Qbnp[index,0]
+        index = self.getNodeList().index(cpl_node)
+        Op = self.Qnp[index, 0] + self.Qbnp[index, 0]
         
         # Get coupling terms
         E = E - E[0]
@@ -895,7 +927,7 @@ class NumericalSystem(ds.TempData):
         g_list = gC * np.abs(np.array(g_list)/norm)
         
         # Diagonalise RWA strips
-        order = np.zeros(tmax,dtype=np.int)
+        order = np.zeros(tmax, dtype=np.int)
         diag_bare = np.array([-i*wrl + E[i]
                               for i in range(tmax)])
         eigensolver_order = np.linalg.eigvalsh(np.diag(diag_bare))
@@ -924,13 +956,13 @@ class NumericalSystem(ds.TempData):
     #       Diagonaliser Configuration
     ###################################################################################################################
     
-    def setDiagConfig(self, eigvalues=5, get_vectors=False, sparse=False, sparsesolveropts={"sigma":None,"mode":"normal","maxiter":None,"tol":1e-3,"which":"SA"}):
+    def setDiagConfig(self, eigvalues=5, get_vectors=False, sparse=False, sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}):
         self.diagonalizer_config = {
             'kwargs':{
-                'eigvalues':eigvalues,
-                'get_vectors':get_vectors,
+                'eigvalues':eigvalues, 
+                'get_vectors':get_vectors, 
                 'sparsesolveropts':sparsesolveropts
-            },
+            }, 
             'sparse':sparse
         }
         
@@ -951,13 +983,13 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     
     ## FIXME: All of these functions should be inherited from Parameters. Parameters should be made to work with the
-    ## symbols to avoid having to update both the symbols and the parameters in the present class. Similarly,
+    ## symbols to avoid having to update both the symbols and the parameters in the present class. Similarly, 
     ## the parameterisations could then be built into the Parameters class. Then we just need that class to have a
     ## getter for the substitutions
     
     ## Create a sweep specification for a single parameter.
     def sweepSpec(self, *args, **kwargs):
-        return self.params.paramSweepSpec(*args,**kwargs)
+        return self.params.paramSweepSpec(*args, **kwargs)
     
     ## Create an evaluation specification for a single function.
     def evalSpec(self, func, diag, depends, **kwargs):
@@ -965,7 +997,7 @@ class NumericalSystem(ds.TempData):
     
     ## Set the value of a parameter.
     def setParameterValue(self, name, value):
-        return self.params.setParameterValue(name,value)
+        return self.params.setParameterValue(name, value)
     
     ## Get the value of a parameter.
     def getParameterValue(self, name):
@@ -973,7 +1005,9 @@ class NumericalSystem(ds.TempData):
     
     ## Set many parameter values.
     def setParameterValues(self, *name_value_pairs):
-        return self.params.setParameterValues(*name_value_pairs)
+        self.params.setParameterValues(*name_value_pairs)
+        self.prepareOperators()
+        self.substitute({})
     
     ## Get many parameter values.
     def getParameterValues(self, *names):
@@ -991,15 +1025,6 @@ class NumericalSystem(ds.TempData):
     
     def getPrefactor(self, name):
         return self.units.getPrefactor(name)
-    
-    def getSubsystemList(self):
-        return list(self.cs.coupled_subsys.keys())
-    
-    def getSubsystemDerivedParametersList(self, subsystem):
-        return list(self.cs.coupled_subsys[subsystem]['derived_parameters'].keys())
-    
-    def getSubsystemDerivedParameter(self, param):
-        return self.subsys_dparams[self.subsystem][param]
     
     ###################################################################################################################
     #       Parameter Sweep Functions
@@ -1053,7 +1078,7 @@ class NumericalSystem(ds.TempData):
                             else:
                                 dep = results[entry['depends']][i]
                         except:
-                            raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'],entry['eval'])) # FIXME
+                            raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
                         
                         # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
                         try:
@@ -1063,9 +1088,9 @@ class NumericalSystem(ds.TempData):
                     
                     # Check if evaluation depends on eigenvalues and eigenvectors
                     if V is not None:
-                        M = getattr(self,entry['eval'])(E,V,**entry['kwargs'])
+                        M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
                     else:
-                        M = getattr(self,entry['eval'])(**entry['kwargs'])
+                        M = getattr(self, entry['eval'])(**entry['kwargs'])
                     
                     # Check if diagonalisation is required
                     if self.__use_temp:
@@ -1101,10 +1126,10 @@ class NumericalSystem(ds.TempData):
                 loop_time = time.time()
             for i in range(self.params.sweep_grid_npts):
                 # Do the post-substitutions
-                self._postsub(dict([(k,v[i]) for k,v in self.params.sweep_grid_c.items()]))
+                self._postsub(dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()]))
                 
                 # Get requested evaluable
-                M = getattr(self,entry['eval'])(**entry['kwargs'])
+                M = getattr(self, entry['eval'])(**entry['kwargs'])
                 if self.__use_temp:
                     if entry['diag']:
                         results = self.diagonalize(M)
@@ -1138,7 +1163,7 @@ class NumericalSystem(ds.TempData):
             return results
         
     
-    def paramSweepFunc(self, sweep_spec, ufcn, ufcn_args={}, get_vectors=False, sparse=False, sparselevels=6, sparsesolveropts={"sigma":None,"mode":"normal","maxiter":None,"tol":1e-3,"which":"SA"}):
+    def paramSweepFunc(self, sweep_spec, ufcn, ufcn_args={}, get_vectors=False, sparse=False, sparselevels=6, sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}):
         self.params.ndSweep(sweep_spec)
         #self.eval_dp = True # Signal we want to calculate derived parameters
         
@@ -1153,46 +1178,46 @@ class NumericalSystem(ds.TempData):
         if not get_vectors:
             if not sparse:
                 for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k,v[i]) for k,v in self.params.sweep_grid_c.items()])
+                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
                     self._postsub(params)
                     E = self.getHamiltonian().eigenenergies()
                     result.append(E)
-                    func_result.append(ufcn(self,params,E,**ufcn_args))
+                    func_result.append(ufcn(self, params, E, **ufcn_args))
             else:
                 H = None
                 for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k,v[i]) for k,v in self.params.sweep_grid_c.items()])
+                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
                     self._postsub(params)
                     
                     # Solve
-                    E = sc.sparse.linalg.eigsh(self.getHamiltonian().data,k=sparselevels,return_eigenvectors=False,**sparsesolveropts)
+                    E = sc.sparse.linalg.eigsh(self.getHamiltonian().data, k=sparselevels, return_eigenvectors=False, **sparsesolveropts)
                     
                     # Sort the results
                     E.sort()
                     result.append(E)
-                    func_result.append(ufcn(self,params,E,**ufcn_args))
+                    func_result.append(ufcn(self, params, E, **ufcn_args))
         else:
             if not sparse:
                 for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k,v[i]) for k,v in self.params.sweep_grid_c.items()])
+                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
                     self._postsub(params)
-                    E,V = self.getHamiltonian().eigenstates()
-                    result.append([E,V])
-                    func_result.append(ufcn(self,params,E,V,**ufcn_args))
+                    E, V = self.getHamiltonian().eigenstates()
+                    result.append([E, V])
+                    func_result.append(ufcn(self, params, E, V, **ufcn_args))
             else:
                 H = None
                 for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k,v[i]) for k,v in self.params.sweep_grid_c.items()])
+                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
                     self._postsub(params)
                     
                     # Solve
-                    E,V = sc.sparse.linalg.eigsh(self.getHamiltonian().data,k=sparselevels,return_eigenvectors=True,**sparsesolveropts)
+                    E, V = sc.sparse.linalg.eigsh(self.getHamiltonian().data, k=sparselevels, return_eigenvectors=True, **sparsesolveropts)
                     
                     # FIXME: Sort the results and convert eigenvectors to qutip 
-                    result.append((E,V.T))
-                    func_result.append(ufcn(self,params,E,V.T,**ufcn_args))
+                    result.append((E, V.T))
+                    func_result.append(ufcn(self, params, E, V.T, **ufcn_args))
                     
-        return np.array(result),np.array(func_result)
+        return np.array(result), np.array(func_result)
     
     def getSweep(self, data, ind_var, static_vars, evaluable="getHamiltonian"):
             return self.params.getSweepResult(ind_var, static_vars, data=data, key=evaluable)
@@ -1214,7 +1239,7 @@ class NumericalSystem(ds.TempData):
         non_swept = []
         
         # Check which parameters are not being swept
-        for k,v in self.all_params_sym.items():
+        for k, v in self.all_params_sym.items():
             if k not in self.params.sweep_grid_params:
                 non_swept.append(k)
             else:
