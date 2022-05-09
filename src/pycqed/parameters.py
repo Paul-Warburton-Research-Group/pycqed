@@ -2,6 +2,7 @@
 """
 import os
 import numpy as np
+import sympy as sy
 from . import text2latex as t2l
 from . import util
 
@@ -11,36 +12,43 @@ class Param:
     :param name: The utf name of the parameter.
     :type name: str
     
-    :param value: The initial value to set the parameter to, defaults to `0.0`.
+    :param value: The initial value to set the parameter to, defaults to `None`.
     :type value: int float np.float64, optional
     
     :param bounds: The lower and upper bounds of the parameter, defaults to `[-np.inf, np.inf]`.
     :type bounds: list of floats, optional
+    
+    :param unit_pref: A prefactor that encode the unit of the parameter, defaults to `1.0`.
+    :type unit_pref: int float np.float64, optional
     
     :raises Exception: If the parameters are not accepted types or the initial value is out of bounds.
     
     :return: A new instance of :class:`Param`.
     :rtype: :class:`Param`
     
-    This constructor attempts to generate a latex version of the parameter name for use with plots. It uses the :py:mod:`pycqed.src.text2latex` module for this functionality.
+    This constructor attempts to generate a latex version of the parameter name for use with plots. It uses the :py:mod:`pycqed.src.text2latex` module for this functionality. The constructor also creates a `sympy` symbol associated with the parameter. The first character is the symbol and the following characters are subscripted.
     
     The following class attributes are accessible by the user:
     
     :ivar name: The utf string of the parameter.
     :ivar name_latex: A string to be used with latex.
+    :ivar symbol: A `sympy` symbol for the parameter.
     :ivar sweep: The sweep array.
     """
     __types = ["type1", "type2"]
     __valid_scalar_types = [int, float, np.float64]
     
-    def __init__(self, name, value=0.0, bounds=[-np.inf, np.inf]):
+    def __init__(self, name, value=None, bounds=[-np.inf, np.inf], unit_pref=1.0):
         """Constructor method."""
-        # Ensure name is a string
+        # Ensure name is a string and it has the correct format
         if type(name) is not str:
             raise Exception("'name' is not a string.")
-        # Ensure value is a float
-        if type(value) not in self.__valid_scalar_types:
-            raise Exception("'value' is not a float.")
+        if name.find(' ') >= 0:
+            raise Exception("'name' should not have any whitespace characters.")
+        # Ensure value is a float if it is not None
+        if value is not None:
+            if type(value) not in self.__valid_scalar_types:
+                raise Exception("'value' is not a float.")
         # Ensure bounds is a list of two floats
         if type(bounds) is not list:
             raise Exception("'bounds' is not a list.")
@@ -52,27 +60,31 @@ class Param:
         # Ensure lower bound is smaller than upper bound
         if bounds[0] > bounds[1]:
             raise Exception("Lower bound is greater than upper bound in 'bounds'.")
+        # Ensure unit pref is a float and is positive
+        if type(unit_pref) not in self.__valid_scalar_types:
+            raise Exception("'unit_pref' is not a float.")
+        if float(unit_pref) < 0.0:
+            raise Exception("'unit_pref' is negative.")
+        
         
         self.name = name
-        self.__value = float(value)
+        self.symbol = sy.symbols("%s_{%s}" % (name[0], name[1:]))
+        if value is not None:
+            self.__value = float(value)
+        else:
+            self.__value = None
         self.__lower_bound = float(bounds[0])
         self.__upper_bound = float(bounds[1])
+        self.__upref = float(unit_pref)
         self.name_latex = t2l.latexify_param_name(self.name)
         self.sweep = np.array([])
     
     def getValue(self):
         """ Get the current value of the parameter.
         
-        :raises Exception: If the value is out of bounds.
-        
         :return: The current value of the parameter.
         :rtype: int float np.float64
         """
-        # Check bounds
-        if self.__value > self.__upper_bound:
-            raise Exception("Param %s 'value' exceeds specified upper bound." % (self.name))
-        if self.__value < self.__lower_bound:
-            raise Exception("Param %s 'value' exceeds specified lower bound." % (self.name))
         return self.__value
     
     def setValue(self, value):
@@ -102,7 +114,7 @@ class Param:
         :return: The lower and upper bounds of the parameter.
         :rtype: list of two floats
         """
-        return [self._lower_bound,self.__upper_bound]
+        return [self._lower_bound, self.__upper_bound]
     
     def setBounds(self, bounds):
         """ Set the bounds of the parameter.
@@ -166,12 +178,13 @@ class Param:
         if float(end) < self.__lower_bound:
             raise Exception("Param %s 'end' exceeds specified lower bound." % (self.name))
         
-        self.sweep = np.linspace(float(start),float(end),N)
+        self.sweep = np.linspace(float(start), float(end), N)
         self.N = N
         return self.sweep
 
+# FIXME: This class should technically inherit the unit system
 class ParamCollection:
-    """ This class uses an array of :class:`Param` instances and provides methods to manipulate them in useful ways, for example to create multidimensional sweeps.
+    """ This class uses an array of :class:`Param` instances and provides methods to manipulate them in useful ways, for example to create multidimensional sweeps and return substitution dictionaries. It also provides an equation system, to allow parameters to be created in terms of others, or to specify inter-dependencies.
     
     :param names: A list of parameter names to create.
     :type names: list of str
@@ -195,9 +208,17 @@ class ParamCollection:
     
     def __init__(self, names):
         self.__collection = {}
+        self.__symbol_map = {}
+        self.__parameterisation = {}
         for name in names:
             self.__collection[name] = Param(name)
+            self.__symbol_map[name] = self.__collection[name].symbol
     
+    ###################################################################################################################
+    #       Basic Parameter Manipulation Functions
+    ###################################################################################################################
+    
+    # FIXME: Should be renamed to getParameterDict
     def getParameterList(self):
         """ Gets the parameter dictionary, mapping the utf name to the :class:`Param` instance.
         
@@ -206,26 +227,71 @@ class ParamCollection:
         """
         return self.__collection
     
+    # FIXME: Should be renamed to getSymbolDict
+    def getSymbolList(self):
+        """ Gets the symbol dictionary, mapping the utf name to the Param `sympy` symbol.
+        
+        :return: A dictionary of param names mapping to `sympy` symbols.
+        :rtype: dict
+        """
+        return self.__symbol_map
+    
+    def getSymbol(self, name):
+        """ Gets the symbol associated with the parameter `name`.
+        
+        :param name: The name of the parameter.
+        :type name: str
+        
+        :raises Exception: If the parameter is not in the collection.
+        
+        :return: The symbol of the specified parameter.
+        :rtype: sympy.Symbol
+        """
+        if type(name) != str:
+            raise Exception("Parameter name %s is not a string." % repr(name))
+        return self.__symbol_map[name]
+    
     def getParameterValuesDict(self):
-        """ Returns a dictionary of the current set values of the parameters in a dictionary format.
+        """ Returns a dictionary of all the current set values of the parameters in a dictionary format.
         
         :return: A dictionary of all param names to values.
         :rtype: dict
         """
         return {k: v.getValue() for k, v in self.__collection.items()}
     
-    def addParameter(self, name):
+    def getSymbolValuesDict(self):
+        """ Returns a dictionary of all the current set values of the parameter symbols in a dictionary format.
+        
+        :return: A dictionary of all param symbols to values.
+        :rtype: dict
+        """
+        return {self.__symbol_map[k]: v.getValue() for k, v in self.__collection.items()}
+    
+    def addParameter(self, name, symbol_override=None):
         """ Adds a new parameter to the collection if it does not already exist. If it does exist, nothing is reported.
         
         :param name: The name of the parameter to add.
         :type name: str
         
+        :param symbol_override: An different symbol to use than the internally generated one.
+        :type symbol_override: sympy.Symbol
+        
+        :raises Exception: If `name` is not a str or `symbol_override` is not a sympy.Symbol.
+        
         :return: None
         """
+        if type(name) != str:
+            raise Exception("Parameter name %s is not a string." % repr(name))
+        
+        if symbol_override is not None:
+            if type(symbol_override) != sy.Symbol:
+                raise Exception("Symbol %s is not a sympy.Symbol instance." % repr(symbol_override))
+        
         if name not in list(self.__collection.keys()):
             self.__collection[name] = Param(name)
-        else:
-            return
+            if symbol_override is not None:
+                self.__collection[name].symbol = symbol_override
+            self.__symbol_map[name] = self.__collection[name].symbol
     
     def addParameters(self, *names):
         """ Adds multiple new parameters to the collection if they do not already exist. If some or all exist, nothing is reported.
@@ -252,6 +318,7 @@ class ParamCollection:
             raise Exception("'%s' parameter was not found." % name)
         else:
             del self.__collection[name]
+            del self.__symbol_map[name]
     
     def getParameterNamesList(self):
         """ Gets the list of available parameter names in the collection.
@@ -260,6 +327,14 @@ class ParamCollection:
         :rtype: list
         """
         return list(self.__collection.keys())
+    
+    def getParameterSymbolsList(self):
+        """ Gets the list of available parameter symbols in the collection.
+        
+        :return: The list of `sympy` symbols.
+        :rtype: list
+        """
+        return list(self.__symbol_map.values())
     
     def setParameterValue(self, name, value):
         """ Set the value of a given parameter.
@@ -275,9 +350,17 @@ class ParamCollection:
         :return: None
         """
         # Check name is defined
-        if name not in list(self.__collection.keys()):
+        if name not in self.__collection.keys():
             raise Exception("'%s' parameter was not found." % name)
+        
+        # Don't update the value if this parameter is parameterised by others
+        if name in self.__parameterisation.keys():
+            print("Warning: Parameter %s is parameterised so it will not be set to the requested value." % name)
+            return
+        
+        # Update the value
         self.__collection[name].setValue(value)
+        self._update_parameterisations()
     
     def getParameterValue(self, name):
         """ Get the value of a given parameter.
@@ -293,6 +376,7 @@ class ParamCollection:
         # Check name is defined
         if name not in list(self.__collection.keys()):
             raise Exception("'%s' parameter was not found." % name)
+        
         return self.__collection[name].getValue()
     
     def getParameterSweep(self, name):
@@ -352,37 +436,221 @@ class ParamCollection:
         if len(keys) != len(values):
             raise Exception("'name_value_pairs' definition invalid.")
         
-        for i,name in enumerate(keys):
+        for i, name in enumerate(keys):
             # Check name is defined
             if name not in list(self.__collection.keys()):
                 raise Exception("'%s' parameter was not found." % name)
+            if name in self.__parameterisation.keys():
+                print("Warning: Parameter %s is parameterised so it will not be set to the requested value." % name)
+                continue
             self.__collection[name].setValue(values[i])
+        self._update_parameterisations()
     
-    def getParameterValues(self, *names, dictionary=False):
-        """ Get the values of many parameters.
+    def getParameterValues(self, *names):
+        """ Get the values of many parameters as a dictionary.
         
         :param \*names: Arguments list, formatted as the parameter names.
         :type \*names: str, str ...
         
-        :param dictionary: Specifies whether to return the result as a dictionary, defaults to `False`
-        :type dictionary: bool, optional
-        
         :raises Exception: If the argument types are incorrect, ill-formatted or not found.
         
-        :return: A list if `dictionary=False`, a dictionary with the parameter names as keys if `dictionary=True`
-        :rtype: list or dict
+        :return: A dictionary with the parameter names as keys
+        :rtype: dict
         """
-        values = []
+        values = {}
         for name in list(names):
             # Check name is defined
             if name not in list(self.__collection.keys()):
                 raise Exception("'%s' parameter was not found." % name)
-            values.append(self.__collection[name].getValue())
-        
-        # Return as dictionary if required
-        if dictionary:
-            return dict(zip(list(names),values))
+            values[name] = self.__collection[name].getValue()
         return values
+    
+    def getSymbolValues(self, *names):
+        """ Get the values of many parameters keyed by symbol. Useful for getting a substitution dict of a selection of parameters.
+        
+        :param \*names: Arguments list, formatted as the parameter names.
+        :type \*names: str, str ...
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted or not found.
+        
+        :return: A dictionary with the parameter symbols as keys
+        :rtype: dict
+        """
+        values = {}
+        for name in list(names):
+            # Check name is defined
+            if name not in list(self.__collection.keys()):
+                raise Exception("'%s' parameter was not found." % name)
+            values[self.__symbol_map[name]] = self.__collection[name].getValue()
+        return values
+    
+    def allParametersSet(self):
+        """ Checks if all the parameters in the collection have been initialised.
+        
+        :return: True if all parameters have been initialised else False
+        :rtype: bool
+        """
+        if None in self.getParameterValuesDict().values():
+            return False
+        return True
+    
+    ###################################################################################################################
+    #       Parameterisations
+    ###################################################################################################################
+    
+    def getSymbols(self, *names):
+        """ Generates a set of `sympy` symbols for use in parameterisation. They are added as independent Param instances.
+        The symbols are returned in a dictionary so that they can be used to create expressions.
+        
+        :param \*names: Arguments list, formatted as the parameter names.
+        :type \*names: str, str ...
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted or not found.
+        
+        :return: A dictionary of `sympy` symbols with the parameter names as keys
+        :rtype: dict
+        """
+        values = {}
+        for name in list(names):
+            # Check name is defined
+            if type(name) != str:
+                raise Exception("Parameter name %s is not a string." % repr(name))
+            self.addParameter(name)
+            values[name] = self.__symbol_map[name]
+        return values
+    
+    def getParametricParametersList(self):
+        """ Get the list of parameters that have a parametric expression.
+        
+        :return: A list of parameter names.
+        :rtype: list
+        """
+        return list(self.__parameterisation.keys())
+    
+    def addParameterisation(self, name, expression):
+        """ Registers a parameterisation of the parameter `name` in terms of symbols returned by :func:`getSymbols`. It is allowed to use `sympy` functions such as `sympy.cos` in expressions, and also any previously defined parameters.
+        
+        :param name: The name of the parameter that is being parameterised.
+        :type name: str
+        
+        :param expression: A `sympy` expression in terms of other parameters.
+        :type expression: float, int, variable
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        
+        :return: None
+        :rtype: None
+        """
+        if name not in list(self.__collection.keys()):
+            raise Exception("'%s' parameter was not found." % name)
+        
+        # Check the symbols in expression are actually all registered and get their names
+        names = []
+        rev_map = {v: k for k, v in self.__symbol_map.items()}
+        for sym in expression.free_symbols:
+            if sym not in self.getSymbolList().values():
+                raise Exception("Symbol '%s' not registered." % repr(sym))
+            names.append(rev_map[sym])
+        
+        # Register the parameterisation
+        self.__parameterisation[name] = {
+            "expression": expression,
+            "parameters": names
+        }
+    
+    def addParameterisationPrefactor(self, name, prefactor):
+        """ Add a prefactor to a parameterisation expression. This is mechanism for implementing unit conversion between parameters if required.
+        
+        :param name: The name of the parametric parameter.
+        :type name: str
+        
+        :param prefactor: A `sympy` expression in terms of other parameters.
+        :type prefactor: float, int, variable
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        
+        :return: None
+        :rtype: None
+        """
+        if name not in list(self.__parameterisation.keys()):
+            raise Exception("'%s' parameter is not parameterised." % name)
+        self.__parameterisation[name]["expression"] *= prefactor
+    
+    def getParametricExpression(self, name):
+        """ Gets the `sympy` expression of parameter `name`.
+        
+        :param name: The name of the parameter.
+        :type name: str
+        
+        :raises Exception: If the parameter was not parameterised.
+        
+        :return: A `sympy` expression.
+        :rtype: sympy type
+        """
+        if name not in list(self.__parameterisation.keys()):
+            raise Exception("'%s' parameter is not parameterised." % name)
+        
+        return self.__parameterisation[name]["expression"]
+    
+    def getParameterisationParameters(self, name):
+        """ Gets the parameters that form the parametric expression of parameter `name`.
+        
+        :param name: The name of the parameter.
+        :type name: str
+        
+        :raises Exception: If the parameter was not parameterised.
+        
+        :return: A list of parameter names.
+        :rtype: list
+        """
+        if name not in list(self.__parameterisation.keys()):
+            raise Exception("'%s' parameter is not parameterised." % name)
+        
+        return self.__parameterisation[name]["parameters"]
+    
+    def rmParameterisation(self, name):
+        """ Unregisters the parameterisation of parameter `name`.
+        
+        :param name: The name of the parameter that is being parameterised.
+        :type name: str
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        
+        :return: None
+        :rtype: None
+        """
+        if name not in list(self.__collection.keys()):
+            raise Exception("'%s' parameter was not found." % name)
+        
+        if name not in list(self.__parameterisation.keys()):
+            raise Exception("'%s' parameter is not parameterised." % name)
+        
+        # Also remove the actual parameters?
+        
+        del self.__parameterisation[name]
+    
+    def parameterisationParametersSet(self, name):
+        """ Checks if the parameters that parameterise `name` have been initialised.
+        
+        :param name: The name of the parameterised parameter.
+        :type name: str
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        
+        :return: True if the parameters are initialised else False
+        :rtype: bool
+        """
+        if name not in list(self.__parameterisation.keys()):
+            raise Exception("'%s' parameter was not found." % name)
+        
+        names = self.__parameterisation[name]['parameters']
+        if None in self.getParameterValues(*names).values():
+            return False
+        return True
+    
+    ###################################################################################################################
+    #       Parameter Sweeping Functions
+    ###################################################################################################################
     
     def paramSweepSpec(self, name, *sweep_params):
         """ Convenience method to generate a sweep specification for use with :func:`ndSweep`.
@@ -407,7 +675,12 @@ class ParamCollection:
             raise Exception("'%s' parameter was not found." % name)
         
         swp = list(sweep_params)
-        return {"name":name,"start":swp[0],"end":swp[1],"N":swp[2]}
+        return {
+            "name": name,
+            "start": swp[0],
+            "end": swp[1],
+            "N": swp[2]
+        }
     
     def ndSweep(self, spec):
         """ Generates a single or multidimensional sweep of parameters in such a way that only a single for loop is required to apply the parameters.
@@ -495,6 +768,23 @@ class ParamCollection:
             self.sweep_grid_c[k] = self.sweep_grid_nc[k].flatten()
             if i == 0:
                 self.sweep_grid_c_len = len(self.sweep_grid_c[k])
+    
+    def getSweepParametersDict(self):
+        """ Gets the list of parameters that will be swept.
+        
+        :return: A list of parameter names.
+        :rtype: list
+        """
+        return self.getSymbolValues(*self.sweep_grid_params)
+    
+    def getNonSweepParametersDict(self):
+        """ Gets the symbol-value dictionary of parameters that will NOT be swept.
+        
+        :return: A dictionary of symbol value pairs.
+        :rtype: dict
+        """
+        non_sweep = list(set(self.__collection.keys()) - set(self.sweep_grid_params))
+        return self.getSymbolValues(*non_sweep)
     
     def collapsedIndices(self, *indices):
         """ Computes the indices of the collapsed array for corresponding indices of the non-collapsed array. Should not be used by the user. Will be hidden in the future.
@@ -735,6 +1025,26 @@ class ParamCollection:
         else:
             raise Exception("Invalid independent variable specification. Found type '%s'" % repr(type(ind_var)))
     
+    ###################################################################################################################
+    #       Internal
+    ###################################################################################################################
     
+    def _update_parameterisations(self):
+        try:
+            for k, v in self.__parameterisation.items():
+                subs = self.getSymbolValues(*v['parameters'])
+                self.__collection[k].setValue(float(v['expression'].subs(subs)))
+        except:
+            pass
+
+
+
+
+
+
+
+
+
+
 
 

@@ -3,6 +3,7 @@ __all__ = [
     "SymbolicSystem",
     "NumericalSystem",
     "ProjectData",
+    "ParamCollection",
     "parameters",
     "physical_constants",
     "text2latex",
@@ -15,6 +16,7 @@ from .symbolic_system import SymbolicSystem
 from .numerical_system import NumericalSystem
 from .dataspec import ProjectData
 from .units import Units, units_presets
+from .parameters import ParamCollection
 from . import parameters
 from . import physical_constants
 from . import text2latex

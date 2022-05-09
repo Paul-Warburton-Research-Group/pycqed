@@ -31,7 +31,7 @@ class NumericalSystem(ds.TempData):
         "leg"  # DoFs have inductive parts only
     ]
     
-    ## Consider listing dependencies here too
+    ## FIXME: Consider listing dependencies here too
     __eval_avail = [
         "getHamiltonian", 
         "getBranchCurrents", 
@@ -41,11 +41,8 @@ class NumericalSystem(ds.TempData):
         "getResonatorResponse"
     ]
     
-    ## Original circuit parameter group name
-    __orig_group_name = "orig"
-    
     ## Initialise a Hamiltonian using a circuit specification
-    def __init__(self, circuitspec, unit=units.Units("CQED1")):
+    def __init__(self, symbolic_system, unit=units.Units("CQED1")):
         
         # Initialise the temporary data manager
         super().__init__()
@@ -53,7 +50,7 @@ class NumericalSystem(ds.TempData):
         self.__use_temp = False
         
         # Assign the circuit
-        self.cs = circuitspec
+        self.SS = symbolic_system
         
         # Nested dictionary for DoF operators, keyed by the relevant mode
         self.circ_operators = {}
@@ -65,7 +62,7 @@ class NumericalSystem(ds.TempData):
         
         # Define the parameter collection
         # FIXME: Symbols to be integrated in the ParamCollection class
-        self.all_params_sym = self.cs.getParameterDict()
+        self.all_params_sym = self.SS.getParameterDict()
         self.params = pa.ParamCollection(list(self.all_params_sym.keys()))
         
         # For parameterisations
@@ -82,6 +79,7 @@ class NumericalSystem(ds.TempData):
         
         # Set the unit system
         self.units = unit
+        self._set_parameter_units()
         
         # Load default diagonaliser configuration
         self.setDiagConfig()
@@ -95,10 +93,10 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     
     def getNodeList(self):
-        return self.cs.nodes
+        return self.SS.nodes
     
     def getNodeIndex(self, node):
-        return self.cs.nodes.index(node)
+        return self.SS.nodes.index(node)
         
     def getCommutator(self, Q, P, basis="charge"):
         if basis == "charge": # Need to figure out the correction for this case
@@ -172,6 +170,9 @@ class NumericalSystem(ds.TempData):
             subs = {}
             for k, v in self.all_params_sym.items():
                 subs[v] = self.params.getParameterValue(k)
+            
+            subs = self.SS.getSymbolValuesDict()
+            
             osc_impedance = float(impedance.subs(subs))*self.units.getPrefactor("Impe")
             if osc_impedance != osc_impedance or osc_impedance == 0.0:
                 raise Exception("Parameters not set for oscillator mode '%i'." % node)
@@ -278,8 +279,8 @@ class NumericalSystem(ds.TempData):
         if basis == "oscillator":
             update = True
             index = self.getNodeIndex(node)
-            Linv = self.cs.getInverseInductanceMatrix()
-            Cinv = self.cs.getInverseCapacitanceMatrix()
+            Linv = self.SS.getInverseInductanceMatrix()
+            Cinv = self.SS.getInverseCapacitanceMatrix()
             impedance = sy.sqrt(Cinv[index, index]/Linv[index, index])
             frequency = sy.sqrt(Linv[index, index]*Cinv[index, index])
         elif basis == "flux":
@@ -458,34 +459,34 @@ class NumericalSystem(ds.TempData):
     
     def getChargeOpVector(self):
         pos = self.getNodeList()
-        pos_dofs = self.cs.getDoFSymbolList("charge")
+        pos_dofs = self.SS.getDoFSymbolList("charge")
         pos_ops = {k: v["charge"] for k, v in self.circ_operators.items()}
 
         # Reverse symbol map
         pos_dofs_rev = {v: k for k, v in pos_dofs.items()}
         arr = []
-        for sym in self.cs.getChargeVector():
+        for sym in self.SS.getChargeVector():
             pos = pos_dofs_rev[sym]
             arr.append(pos_ops[pos])
         self.Qnp = self._init_qobj_vector(arr, dtype=object)
     
     def getFluxOpVector(self):
         pos = self.getNodeList()
-        pos_dofs = self.cs.getDoFSymbolList("flux")
+        pos_dofs = self.SS.getDoFSymbolList("flux")
         pos_ops = {k: v["flux"] for k, v in self.circ_operators.items()}
 
         # Reverse symbol map
         pos_dofs_rev = {v: k for k, v in pos_dofs.items()}
         arr = []
-        for sym in self.cs.getFluxVector():
+        for sym in self.SS.getFluxVector():
             pos = pos_dofs_rev[sym]
             arr.append(pos_ops[pos])
         self.Pnp = self._init_qobj_vector(arr, dtype=object)
     
     def getRightDispOpVector(self):
         pos = self.getNodeList()
-        pos_dofs1 = self.cs.getDoFSymbolList("disp")
-        pos_dofs2 = self.cs.getDoFSymbolList("disp_adj")
+        pos_dofs1 = self.SS.getDoFSymbolList("disp")
+        pos_dofs2 = self.SS.getDoFSymbolList("disp_adj")
         pos_ops1 = {k:v["disp"] for k, v in self.circ_operators.items()}
         pos_ops2 = {k:v["disp_adj"] for k, v in self.circ_operators.items()}
 
@@ -493,7 +494,7 @@ class NumericalSystem(ds.TempData):
         pos_dofs_rev1 = {v:k for k, v in pos_dofs1.items()}
         pos_dofs_rev2 = {v:k for k, v in pos_dofs2.items()}
         arr = []
-        for sym in self.cs.getRightDisplacementOpVector(adjoint=False):
+        for sym in self.SS.getRightDisplacementOpVector(adjoint=False):
             if sym == 1:
                 arr.append(1.0)
                 continue
@@ -507,8 +508,8 @@ class NumericalSystem(ds.TempData):
     
     def getRightDispAdjOpVector(self):
         pos = self.getNodeList()
-        pos_dofs1 = self.cs.getDoFSymbolList("disp_adj")
-        pos_dofs2 = self.cs.getDoFSymbolList("disp")
+        pos_dofs1 = self.SS.getDoFSymbolList("disp_adj")
+        pos_dofs2 = self.SS.getDoFSymbolList("disp")
         pos_ops1 = {k:v["disp_adj"] for k, v in self.circ_operators.items()}
         pos_ops2 = {k:v["disp"] for k, v in self.circ_operators.items()}
 
@@ -516,7 +517,7 @@ class NumericalSystem(ds.TempData):
         pos_dofs_rev1 = {v:k for k, v in pos_dofs1.items()}
         pos_dofs_rev2 = {v:k for k, v in pos_dofs2.items()}
         arr = []
-        for sym in self.cs.getRightDisplacementOpVector(adjoint=True):
+        for sym in self.SS.getRightDisplacementOpVector(adjoint=True):
             if sym == 1:
                 arr.append(1.0)
                 continue
@@ -530,8 +531,8 @@ class NumericalSystem(ds.TempData):
     
     def getLeftDispOpMatrix(self):
         pos = self.getNodeList()
-        pos_dofs1 = self.cs.getDoFSymbolList("disp")
-        pos_dofs2 = self.cs.getDoFSymbolList("disp_adj")
+        pos_dofs1 = self.SS.getDoFSymbolList("disp")
+        pos_dofs2 = self.SS.getDoFSymbolList("disp_adj")
         pos_ops1 = {k: v["disp"] for k, v in self.circ_operators.items()}
         pos_ops2 = {k: v["disp_adj"] for k, v in self.circ_operators.items()}
 
@@ -539,7 +540,7 @@ class NumericalSystem(ds.TempData):
         pos_dofs_rev1 = {v: k for k, v in pos_dofs1.items()}
         pos_dofs_rev2 = {v: k for k, v in pos_dofs2.items()}
         arr = []
-        for sym in self.cs.getLeftDisplacementOpMatrix(adjoint=False, as_vec=True):
+        for sym in self.SS.getLeftDisplacementOpMatrix(adjoint=False, as_vec=True):
             if sym == 1:
                 arr.append(1.0)
                 continue
@@ -553,8 +554,8 @@ class NumericalSystem(ds.TempData):
     
     def getLeftDispAdjOpMatrix(self):
         pos = self.getNodeList()
-        pos_dofs1 = self.cs.getDoFSymbolList("disp_adj")
-        pos_dofs2 = self.cs.getDoFSymbolList("disp")
+        pos_dofs1 = self.SS.getDoFSymbolList("disp_adj")
+        pos_dofs2 = self.SS.getDoFSymbolList("disp")
         pos_ops1 = {k: v["disp_adj"] for k, v in self.circ_operators.items()}
         pos_ops2 = {k: v["disp"] for k, v in self.circ_operators.items()}
 
@@ -562,7 +563,7 @@ class NumericalSystem(ds.TempData):
         pos_dofs_rev1 = {v: k for k, v in pos_dofs1.items()}
         pos_dofs_rev2 = {v: k for k, v in pos_dofs2.items()}
         arr = []
-        for sym in self.cs.getLeftDisplacementOpMatrix(adjoint=True, as_vec=True):
+        for sym in self.SS.getLeftDisplacementOpMatrix(adjoint=True, as_vec=True):
             if sym == 1:
                 arr.append(1.0)
                 continue
@@ -592,28 +593,41 @@ class NumericalSystem(ds.TempData):
         self.getExpandedOperatorsMap()
         self.getOpVectors()
     
-    def prepareSubsystemOperators(self):
-        pass
-    
-    def getSymbolicExpressions(self):
+    def getSymbolicExpressionsOld(self):
         
         # Check for parameterisations
         subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
         
         # FIXME: None of this will work when coordinate transformations are applied
         # Generate final symbolic expressions
-        self.Cinv = self.Rmat*self.cs.getInverseCapacitanceMatrix().subs(subs)*self.RmatT
-        self.Linv = self.RmatTinv*self.cs.getInverseInductanceMatrix().subs(subs)*self.Rmatinv
+        self.Cinv = self.Rmat*self.SS.getInverseCapacitanceMatrix().subs(subs)*self.RmatT
+        self.Linv = self.RmatTinv*self.SS.getInverseInductanceMatrix().subs(subs)*self.Rmatinv
 
         # Get branch inverse inductance matrix for branch current calculations
-        self.Linv_b = self.cs.getInverseInductanceMatrix(mode='branch').subs(subs)
-        self.Cinv_n = self.cs.getInverseCapacitanceMatrix().subs(subs)
+        self.Linv_b = self.SS.getInverseInductanceMatrix(mode='branch').subs(subs)
+        self.Cinv_n = self.SS.getInverseCapacitanceMatrix().subs(subs)
         
         # Symbolic expressions independent of a coupled subsystem
-        self.Jvec = self.cs.getJosephsonVector().subs(subs)
-        self.Qb = self.cs.getChargeBiasVector().subs(subs)
-        self.Pb = self.cs.getFluxBiasVector(mode="branch").subs(subs)
-        self.Pbm = self.cs.getFluxBiasMatrix(mode="branch").subs(subs)
+        self.Jvec = self.SS.getJosephsonVector().subs(subs)
+        self.Qb = self.SS.getChargeBiasVector().subs(subs)
+        self.Pb = self.SS.getFluxBiasVector(mode="branch").subs(subs)
+        self.Pbm = self.SS.getFluxBiasMatrix(mode="branch").subs(subs)
+    
+    def getSymbolicExpressions(self):
+        
+        # Generate final symbolic expressions
+        self.Cinv = self.Rmat*self.SS.getInverseCapacitanceMatrix()*self.RmatT
+        self.Linv = self.RmatTinv*self.SS.getInverseInductanceMatrix()*self.Rmatinv
+
+        # Get branch inverse inductance matrix for branch current calculations
+        self.Linv_b = self.SS.getInverseInductanceMatrix(mode='branch')
+        self.Cinv_n = self.SS.getInverseCapacitanceMatrix()
+        
+        # Symbolic expressions independent of a coupled subsystem
+        self.Jvec = self.SS.getJosephsonVector()
+        self.Qb = self.SS.getChargeBiasVector()
+        self.Pb = self.SS.getFluxBiasVector(mode="branch")
+        self.Pbm = self.SS.getFluxBiasMatrix(mode="branch")
     
     ###################################################################################################################
     #       Parameterisation Functions
@@ -645,7 +659,7 @@ class NumericalSystem(ds.TempData):
     #       Numerical Hamiltonian Generation
     ###################################################################################################################
     
-    def substitute(self, params_dict):
+    def substituteOld(self, params_dict):
         
         # Set the parameter values
         for k, v in params_dict.items():
@@ -683,7 +697,34 @@ class NumericalSystem(ds.TempData):
         # Get branch inverse inductance matrix for branch current calculations
         self.Linvnp_b = np.asmatrix(self.Linv_b.subs(subs), dtype=np.float64)
     
-    def _presub(self):
+    def substitute(self, params_dict):
+        
+        # If some parameters are omitted from params_dict, those saved in self.params will be used
+        subs = self.SS.getSymbolValuesDict()
+        
+        # Substitute circuit parameters
+        self.Cinvnp = np.asmatrix(self.Cinv.subs(subs), dtype=np.float64)
+        self.Linvnp = np.asmatrix(self.Linv.subs(subs), dtype=np.float64)
+        self.Jvecnp = np.asmatrix(self.Jvec.subs(subs), dtype=np.float64).T
+        
+        # Substitute external biases
+        self.Qbnp = np.asmatrix(self.Qb.subs(subs), dtype=np.float64) # x 2e
+        self.Pbsm = np.asmatrix(self.Pbm.subs(subs), dtype=np.float64)
+        self.Pbnp = np.asmatrix(self.Pb.subs(subs), dtype=np.float64) # x Phi0
+        
+        # Generate exponentiated biases
+        Pexp1 = []
+        Pexp2 = []
+        for i in range(self.Pbsm.shape[0]):
+            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
+            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
+        self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
+        self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
+        
+        # Get branch inverse inductance matrix for branch current calculations
+        self.Linvnp_b = np.asmatrix(self.Linv_b.subs(subs), dtype=np.float64)
+    
+    def _presubOld(self):
         
         # FIXME: Do we want to use only prepareOperators() to register parameterisations, or do we leave this as it is?
         
@@ -697,21 +738,40 @@ class NumericalSystem(ds.TempData):
         #subs = self._get_resonator_substitutions(subs)
         
         # Generate final symbolic expressions
-        self.Cinv_pre = self.Rmat*self.cs.getInverseCapacitanceMatrix().subs(p_subs).subs(subs)*self.RmatT
-        self.Linv_pre = self.RmatTinv*self.cs.getInverseInductanceMatrix().subs(p_subs).subs(subs)*self.Rmatinv
+        self.Cinv_pre = self.Rmat*self.SS.getInverseCapacitanceMatrix().subs(p_subs).subs(subs)*self.RmatT
+        self.Linv_pre = self.RmatTinv*self.SS.getInverseInductanceMatrix().subs(p_subs).subs(subs)*self.Rmatinv
 
         # Get branch inverse inductance matrix for branch current calculations
-        self.Linv_b_pre = self.cs.getInverseInductanceMatrix(mode='branch').subs(p_subs).subs(subs)
+        self.Linv_b_pre = self.SS.getInverseInductanceMatrix(mode='branch').subs(p_subs).subs(subs)
         
-        self.Jvec_pre = self.cs.getJosephsonVector().subs(p_subs).subs(subs)
-        self.Qb_pre = self.cs.getChargeBiasVector().subs(p_subs).subs(subs)
-        self.Pbm_pre = self.cs.getFluxBiasMatrix(mode="branch").subs(p_subs).subs(subs)
+        self.Jvec_pre = self.SS.getJosephsonVector().subs(p_subs).subs(subs)
+        self.Qb_pre = self.SS.getChargeBiasVector().subs(p_subs).subs(subs)
+        self.Pbm_pre = self.SS.getFluxBiasMatrix(mode="branch").subs(p_subs).subs(subs)
         #self.getSymbolicOscillatorParams()
         
         # Find which operators will need to be regenerated for each sweep
         #self._get_regen_ops_list()
     
-    def _postsub(self, params):
+    def _presub(self):
+        # Set the parameters that are not being swept
+        subs = self.SS.getNonSweepParametersDict()
+        
+        # Generate final symbolic expressions
+        self.Cinv_pre = self.Rmat*self.SS.getInverseCapacitanceMatrix().subs(subs)*self.RmatT
+        self.Linv_pre = self.RmatTinv*self.SS.getInverseInductanceMatrix().subs(subs)*self.Rmatinv
+
+        # Get branch inverse inductance matrix for branch current calculations
+        self.Linv_b_pre = self.SS.getInverseInductanceMatrix(mode='branch').subs(subs)
+        
+        self.Jvec_pre = self.SS.getJosephsonVector().subs(subs)
+        self.Qb_pre = self.SS.getChargeBiasVector().subs(subs)
+        self.Pbm_pre = self.SS.getFluxBiasMatrix(mode="branch").subs(subs)
+        #self.getSymbolicOscillatorParams()
+        
+        # Find which operators will need to be regenerated for each sweep
+        #self._get_regen_ops_list()
+    
+    def _postsubOld(self, params):
     
         # Set the parameter values
         subs = self._set_swept_params(params)
@@ -749,6 +809,34 @@ class NumericalSystem(ds.TempData):
         self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
         self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
     
+    def _postsub(self, params):
+    
+        # Set the parameter values
+        self.SS.setParameterValues(params)
+        
+        # Get the subs
+        subs = self.SS.getSweepParametersDict()
+        
+        # Substitute circuit parameters
+        self.Cinvnp = np.asmatrix(self.Cinv_pre.subs(subs), dtype=np.float64)
+        self.Linvnp = np.asmatrix(self.Linv_pre.subs(subs), dtype=np.float64)
+        self.Jvecnp = np.asmatrix(self.Jvec_pre.subs(subs), dtype=np.float64).T
+        self.Linvnp_b = np.asmatrix(self.Linv_b_pre.subs(subs), dtype=np.float64)
+        
+        # Substitute external biases
+        self.Qbnp = np.asmatrix(self.Qb_pre.subs(subs), dtype=np.float64) # x 2e
+        self.Pbsm = np.asmatrix(self.Pbm_pre.subs(subs), dtype=np.float64)
+        #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs), dtype=np.float64) # x Phi0
+        
+        # Generate exponentiated biases
+        Pexp1 = []
+        Pexp2 = []
+        for i in range(self.Pbsm.shape[0]):
+            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
+            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
+        self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
+        self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
+    
     ###################################################################################################################
     #       Evaluables
     ###################################################################################################################
@@ -775,17 +863,17 @@ class NumericalSystem(ds.TempData):
     def getBranchCurrents(self):
         # FIXME: This should compute for a single branch per loop that isn't shared in other loops
         # Get edge components
-        node_list = self.cs.nodes
-        edge_list = self.cs.edges
+        node_list = self.SS.nodes
+        edge_list = self.SS.edges
         
         # Branch currents
         P = self.Pnp #+self.Pbnp
         J = 0.5j*(util.mdot(self.Pexpbnpc, self.Dl_adj, self.Dr_adj) - util.mdot(self.Pexpbnp, self.Dl, self.Dr))
-        #R = np.asmatrix(self.cs.getNodeToBranchMatrix(), dtype=np.float64)
+        #R = np.asmatrix(self.SS.getNodeToBranchMatrix(), dtype=np.float64)
         self.Iops = {}
         for i, edge in enumerate(edge_list):
             # Check if edge has an inductor
-            if self.cs.CG.isInductiveEdge(edge):
+            if self.SS.CG.isInductiveEdge(edge):
                 n1, n2, k = edge
                 if n1 > 0:
                     P1 = P[0, node_list.index(n1)]
@@ -806,7 +894,7 @@ class NumericalSystem(ds.TempData):
     def getNodeVoltages(self):
         
         # Get edge components
-        node_list = self.cs.nodes
+        node_list = self.SS.nodes
         
         # Node voltages
         Q = self.Qnp + self.Qbnp
@@ -849,11 +937,11 @@ class NumericalSystem(ds.TempData):
         if node is None:
             ret = {}
             for i, pos in enumerate(self.getNodeList()):
-                ret[pos] = 0.5 * self.Cinv.subs(p_subs)[i, i] * self.cs.qcp**2
+                ret[pos] = 0.5 * self.Cinv.subs(p_subs)[i, i] * self.SS.qcp**2
             return ret
         else:
             i = self.getNodeList().index(node)
-            return 0.5 * self.Cinv.subs(p_subs)[i, i] * self.cs.qcp**2
+            return 0.5 * self.Cinv.subs(p_subs)[i, i] * self.SS.qcp**2
     
     def getChargingEnergies(self, node=None):
         if node is None:
@@ -881,34 +969,34 @@ class NumericalSystem(ds.TempData):
         
         if edge is None:
             ret = {}
-            for i, edge in enumerate(self.cs.edges):
-                ret[edge] = self.Jvec.subs(p_subs)[i] * self.cs.phi0/(2*self.cs.pi)
+            for i, edge in enumerate(self.SS.edges):
+                ret[edge] = self.Jvec.subs(p_subs)[i] * self.SS.phi0/(2*self.SS.pi)
             return ret
         else:
-            i = self.cs.edges.index(edge)
-            return self.Jvec.subs(p_subs)[i] * self.cs.phi0/(2*self.cs.pi)
+            i = self.SS.edges.index(edge)
+            return self.Jvec.subs(p_subs)[i] * self.SS.phi0/(2*self.SS.pi)
     
     def getJosephsonEnergies(self, edge=None):
         if edge is None:
             ret = {}
-            for i, edge in enumerate(self.cs.edges):
+            for i, edge in enumerate(self.SS.edges):
                 ret[edge] = self.Jvecnp[0, i] * self.units.getPrefactor("Ej")
             return ret
         else:
-            i = self.cs.edges.index(edge)
+            i = self.SS.edges.index(edge)
             return self.Jvecnp[0, i] * self.units.getPrefactor("Ej")
     
     def getResonatorResponse(self, E, V, nmax=100, cpl_node=None):
         
         # Save the derived parameter values for each sweep value
         if cpl_node is None:
-            #for k in self.cs.coupled_subsys[self.subsystem]['derived_parameters'].keys():
+            #for k in self.SS.coupled_subsys[self.subsystem]['derived_parameters'].keys():
             #    self.subsys_dparams[self.subsystem][k].append(self.dpnp[k])
             return None
         
         # Get the model parameters
-        gC = self.getParameterValue('g%ir'%cpl_node)
-        wrl = self.getParameterValue('f%irl'%cpl_node)
+        gC = self.SS.getParameterValue('g%ir'%cpl_node)
+        wrl = self.SS.getParameterValue('f%irl'%cpl_node)
         
         # Get the operator associated with selected node
         index = self.getNodeList().index(cpl_node)
@@ -989,7 +1077,7 @@ class NumericalSystem(ds.TempData):
     
     ## Create a sweep specification for a single parameter.
     def sweepSpec(self, *args, **kwargs):
-        return self.params.paramSweepSpec(*args, **kwargs)
+        return self.SS.paramSweepSpec(*args, **kwargs)
     
     ## Create an evaluation specification for a single function.
     def evalSpec(self, func, diag, depends, **kwargs):
@@ -997,31 +1085,31 @@ class NumericalSystem(ds.TempData):
     
     ## Set the value of a parameter.
     def setParameterValue(self, name, value):
-        return self.params.setParameterValue(name, value)
+        return self.SS.setParameterValue(name, value)
     
     ## Get the value of a parameter.
     def getParameterValue(self, name):
-        return self.params.getParameterValue(name)
+        return self.SS.getParameterValue(name)
     
     ## Set many parameter values.
     def setParameterValues(self, *name_value_pairs):
-        self.params.setParameterValues(*name_value_pairs)
+        self.SS.setParameterValues(*name_value_pairs)
         self.prepareOperators()
         self.substitute({})
     
     ## Get many parameter values.
     def getParameterValues(self, *names):
-        return self.params.getParameterValues(*names, dictionary=True)
+        return self.SS.getParameterValues(*names)
     
     ## Gets all parameters
     def getParameterValuesDict(self):
-        return self.params.getParameterValuesDict()
+        return self.SS.getParameterValuesDict()
     
     def getParameterSweep(self, name):
-        return self.params.getParameterSweep(name)
+        return self.SS.getParameterSweep(name)
     
     def getParameterNames(self):
-        return self.params.getParameterNamesList()
+        return self.SS.getParameterNamesList()
     
     def getPrefactor(self, name):
         return self.units.getPrefactor(name)
@@ -1037,7 +1125,7 @@ class NumericalSystem(ds.TempData):
             init_time = time.time()
         
         # Generate sweep grid
-        self.params.ndSweep(sweep_spec)
+        self.SS.ndSweep(sweep_spec)
         
         # FIXME: Determine if we should be saving the data to temp files rather than in RAM:
         # Use the diagonaliser configuration, the requested evaluation functions, and the total number of sweep setpoints that will be used.
@@ -1061,9 +1149,9 @@ class NumericalSystem(ds.TempData):
             # Time loop
             if timesweep:
                 loop_time = time.time()
-            for i in range(self.params.sweep_grid_npts):
+            for i in range(self.SS.sweep_grid_npts):
                 # Do the post-substitutions
-                self._postsub(dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()]))
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
                 
                 # Get requested evaluables
                 E = None
@@ -1124,9 +1212,9 @@ class NumericalSystem(ds.TempData):
             # Time loop
             if timesweep:
                 loop_time = time.time()
-            for i in range(self.params.sweep_grid_npts):
+            for i in range(self.SS.sweep_grid_npts):
                 # Do the post-substitutions
-                self._postsub(dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()]))
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
                 
                 # Get requested evaluable
                 M = getattr(self, entry['eval'])(**entry['kwargs'])
@@ -1156,7 +1244,7 @@ class NumericalSystem(ds.TempData):
             print ("Parameter Sweep Duration:")
             print ("  Initialization:\t%.3f s" % (loop_time-init_time))
             print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
-            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.params.sweep_grid_npts))
+            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.SS.sweep_grid_npts))
         if self.__use_temp:
             return tmp_results
         else:
@@ -1220,7 +1308,7 @@ class NumericalSystem(ds.TempData):
         return np.array(result), np.array(func_result)
     
     def getSweep(self, data, ind_var, static_vars, evaluable="getHamiltonian"):
-            return self.params.getSweepResult(ind_var, static_vars, data=data, key=evaluable)
+            return self.SS.getSweepResult(ind_var, static_vars, data=data, key=evaluable)
     
     ###################################################################################################################
     #       Internal Functions
@@ -1279,12 +1367,31 @@ class NumericalSystem(ds.TempData):
             except TypeError:
                 self.Rlist.append(k)
     
+    def _set_parameter_units(self):
+        
+        # Get the unit prefactors
+        Uf = self.units.getUnitPrefactor('Hz')
+        Uo = self.units.getUnitPrefactor('Ohm')
+        Uc = self.units.getUnitPrefactor('F')
+        Ul = self.units.getUnitPrefactor('H')
+        
+        # Resonators
+        if self.SS._has_resonators():
+            for node, resonator in self.SS.CG.resonators_cap.items():
+                if resonator is not None:
+                    self.SS.addParameterisationPrefactor(resonator["Cr"], 1/(Uf*Uo*Uc))
+                    self.SS.addParameterisationPrefactor(resonator["Lr"], Uo/(Uf*Ul))
+                    self.SS.addParameterisationPrefactor(resonator["gC"], self.units.getPrefactor('ChgOscCpl'))
+                    self.SS.addParameterisationPrefactor(resonator["frl"], self.units.getPrefactor('Freq'))
+                    self.SS.addParameterisationPrefactor(resonator["Zrl"], self.units.getPrefactor('Impe'))
+        
+    
     ## Substitute the correct resonator parameters
     def _get_resonator_substitutions(self, subs):
         
         # Check there are any resonators
         # FIXME: Do this outside the function to avoid the extra copy
-        if self.cs.resonator_symbols_cap == {}:
+        if self.SS.resonator_symbols_cap == {}:
             return subs
         
         # Get the unit prefactors
@@ -1294,7 +1401,7 @@ class NumericalSystem(ds.TempData):
         Ul = self.units.getUnitPrefactor('H')
         
         # Process the resonators
-        for node, resonator in self.cs.resonator_symbols_cap.items():
+        for node, resonator in self.SS.resonator_symbols_cap.items():
             # Is the frequency and impedance set?
             if resonator['fr'] in subs.keys() and resonator['Zr'] in subs.keys():
                 fr = subs[resonator['fr']]
@@ -1303,19 +1410,19 @@ class NumericalSystem(ds.TempData):
                     # Calculate the resonator component values
                     subs[resonator['Cr']] = 0.5/(np.pi * fr*Uf * Zr*Uo)/Uc
                     subs[resonator['Lr']] = 0.5 * Zr*Uo/(np.pi * fr*Uf)/Ul
-                    self.params.setParameterValue(self.cs.CG.resonators_cap[node]['Cr'], subs[resonator['Cr']])
-                    self.params.setParameterValue(self.cs.CG.resonators_cap[node]['Lr'], subs[resonator['Lr']])
+                    self.params.setParameterValue(self.SS.CG.resonators_cap[node]['Cr'], subs[resonator['Cr']])
+                    self.params.setParameterValue(self.SS.CG.resonators_cap[node]['Lr'], subs[resonator['Lr']])
                     
                     # Calculate coupling and loaded term
-                    gC = float(self.cs.resonator_symbols_expr[node]['gC'].subs(subs))*self.units.getPrefactor('ChgOscCpl')
-                    frl = float(self.cs.resonator_symbols_expr[node]['frl'].subs(subs))*self.units.getPrefactor('Freq')
-                    Zrl = float(self.cs.resonator_symbols_expr[node]['Zrl'].subs(subs))*self.units.getPrefactor('Impe')
+                    gC = float(self.SS.resonator_symbols_expr[node]['gC'].subs(subs))*self.units.getPrefactor('ChgOscCpl')
+                    frl = float(self.SS.resonator_symbols_expr[node]['frl'].subs(subs))*self.units.getPrefactor('Freq')
+                    Zrl = float(self.SS.resonator_symbols_expr[node]['Zrl'].subs(subs))*self.units.getPrefactor('Impe')
                     subs[resonator['gC']] = gC
                     subs[resonator['frl']] = frl
                     subs[resonator['Zrl']] = Zrl
-                    self.params.setParameterValue(self.cs.CG.resonators_cap[node]['gC'], subs[resonator['gC']])
-                    self.params.setParameterValue(self.cs.CG.resonators_cap[node]['frl'], subs[resonator['frl']])
-                    self.params.setParameterValue(self.cs.CG.resonators_cap[node]['Zrl'], subs[resonator['Zrl']])
+                    self.params.setParameterValue(self.SS.CG.resonators_cap[node]['gC'], subs[resonator['gC']])
+                    self.params.setParameterValue(self.SS.CG.resonators_cap[node]['frl'], subs[resonator['frl']])
+                    self.params.setParameterValue(self.SS.CG.resonators_cap[node]['Zrl'], subs[resonator['Zrl']])
                 else:
                     continue # Let errors be thrown further away
                     #raise Exception("Incorrect parameters for resonator on node %i. fr/Zr combinations must be non-zero." % node)
