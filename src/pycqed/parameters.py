@@ -751,20 +751,20 @@ class ParamCollection:
         for param_spec in spec:
             k = param_spec["name"]
             keys.append(k)
-            sweeps.append(self.__collection[k].linearSweep(param_spec["start"],param_spec["end"],param_spec["N"]))
+            sweeps.append(self.__collection[k].linearSweep(param_spec["start"], param_spec["end"], param_spec["N"]))
             self.sweep_grid_npts *= param_spec["N"]
         self.sweep_grid_params = keys
         self.sweep_grid_ndims = len(sweeps)
         
         # Generate mesh grid
-        grid = np.meshgrid(*sweeps,indexing="ij")
+        grid = np.meshgrid(*sweeps, indexing="ij")
         
         # Non-collapsed grid
         self.sweep_grid_nc = dict(zip(keys,grid))
         
         # Collapsed grid
         self.sweep_grid_c = {}
-        for i,k in enumerate(keys):
+        for i, k in enumerate(keys):
             self.sweep_grid_c[k] = self.sweep_grid_nc[k].flatten()
             if i == 0:
                 self.sweep_grid_c_len = len(self.sweep_grid_c[k])

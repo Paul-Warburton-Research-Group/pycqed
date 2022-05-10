@@ -41,6 +41,11 @@ class NumericalSystem(ds.TempData):
         "getResonatorResponse"
     ]
     
+    __eval_spec = {
+        "Hamiltonian": {'eval': 'getHamiltonian', 'diag': True, 'depends': None, 'kwargs': {}},
+        "Resonator":   {'eval': 'getResonatorResponse', 'diag': False, 'depends': 'Hamiltonian', 'kwargs': {}}
+    }
+    
     ## Initialise a Hamiltonian using a circuit specification
     def __init__(self, symbolic_system, unit=units.Units("CQED1")):
         
@@ -59,14 +64,6 @@ class NumericalSystem(ds.TempData):
         # Mode truncations and basis representation, also indicates whether
         # operators need to be considered for regeneration when parameters are changed.
         self.mode_truncations = {}
-        
-        # Define the parameter collection
-        # FIXME: Symbols to be integrated in the ParamCollection class
-        self.all_params_sym = self.SS.getParameterDict()
-        self.params = pa.ParamCollection(list(self.all_params_sym.keys()))
-        
-        # For parameterisations
-        self.params_subs = {}
         
         # Coordinate transformation matrix
         self.Rmat = 1.0
@@ -88,15 +85,34 @@ class NumericalSystem(ds.TempData):
     def __del__(self):
         self.clearSessionData()
     
-    ###################################################################################################################
-    #       Operator Generation and Functions
-    ###################################################################################################################
-    
     def getNodeList(self):
         return self.SS.nodes
     
     def getNodeIndex(self, node):
         return self.SS.nodes.index(node)
+    
+    ## Get Hilbert space size
+    def getHilbertSpaceSize(self):
+        """ Returns the Hilbert space size considering all currently defined operator truncations.
+        
+        :return: The Hilbert space size
+        :rtype: int
+        """
+        ret = 1
+        for m in list(self.mode_truncations.keys()):
+            trunc, basis, update = self.mode_truncations[m]
+            if basis == "charge":
+                ret *= (2*trunc+1)
+            elif basis == "oscillator":
+                ret *= (trunc)
+        return ret
+    
+    def sparsity(self, op):
+        return 1 - op.data.nnz/self.getHilbertSpaceSize()**2
+    
+    ###################################################################################################################
+    #       Operator Generation and Functions
+    ###################################################################################################################
         
     def getCommutator(self, Q, P, basis="charge"):
         if basis == "charge": # Need to figure out the correction for this case
@@ -117,46 +133,6 @@ class NumericalSystem(ds.TempData):
             # Get the correct commutator
             return qt.commutator(P, Q)*corrmat
     
-    def setTruncation(self, pos, trunc, basis):
-        """ Sets the truncation of the operators associated with the given branch or node.
-        
-        For charge and flux basis types, the truncation will be set to `2*trunc+1` to account for negative offsets of neutral charge or flux.
-        
-        :param pos: The node or branch.
-        :type pos: int, tuple
-        
-        :param trunc: The truncation.
-        :type trunc: int
-        
-        :param basis: The basis representation string, can be one defined in the `__basis_repr` private variable of this class.
-        :type basis: str
-        
-        :return: None
-        """
-        if pos not in self.getNodeList():
-            raise Exception("pos '%s' does not exist." % repr(pos))
-        self.mode_truncations[pos] = (trunc, basis, True if basis == "oscillator" else False)
-    
-    # FIXME: Implement me
-    def setTruncations(self):
-        pass
-    
-    ## Get Hilbert space size
-    def getHilbertSpaceSize(self):
-        """ Returns the Hilbert space size considering all currently defined operator truncations.
-        
-        :return: The Hilbert space size
-        :rtype: int
-        """
-        ret = 1
-        for m in list(self.mode_truncations.keys()):
-            trunc, basis, update = self.mode_truncations[m]
-            if basis == "charge":
-                ret *= (2*trunc+1)
-            elif basis == "oscillator":
-                ret *= (trunc)
-        return ret
-    
     def getOperatorList(self, node):
         Q = None
         P = None
@@ -167,10 +143,6 @@ class NumericalSystem(ds.TempData):
         impedance = self.operator_data[node]["impedance"]
         osc_impedance = None
         if impedance is not None:
-            subs = {}
-            for k, v in self.all_params_sym.items():
-                subs[v] = self.params.getParameterValue(k)
-            
             subs = self.SS.getSymbolValuesDict()
             
             osc_impedance = float(impedance.subs(subs))*self.units.getPrefactor("Impe")
@@ -630,32 +602,6 @@ class NumericalSystem(ds.TempData):
         self.Pbm = self.SS.getFluxBiasMatrix(mode="branch")
     
     ###################################################################################################################
-    #       Parameterisation Functions
-    ###################################################################################################################
-    
-    def addParameterisation(self, old_param, expr, name_map):
-        
-        # Register the substitution to perform
-        self.params_subs[old_param] = expr
-        
-        # Add the new symbols associated with parameters
-        self.all_params_sym.update(name_map)
-        
-        # Add the new parameters
-        for k, v in name_map.items():
-            self.params.addParameter(k)
-        
-        # FIXME: Remove old_param if it does not appear in expr
-    
-    def rmParameterisation(self, old_param):
-        
-        # Unregister the substitution
-        del self.params_subs[old_param]
-    
-    def applyParameterisations(self):
-        pass
-    
-    ###################################################################################################################
     #       Numerical Hamiltonian Generation
     ###################################################################################################################
     
@@ -924,25 +870,6 @@ class NumericalSystem(ds.TempData):
         # FIXME: Check node exists?
         return self.Vops[node]
     
-    def getSubsystemDerivedParameters(self, subsystem, which=None):
-        if which is None:
-            return self.subsys_dparams[subsystem]
-        else:
-            return {k:self.subsys_dparams[subsystem][k] for k in which}
-    
-    def getSymbolicChargingEnergies(self, node=None):
-        # Check for parameterisations
-        p_subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
-        
-        if node is None:
-            ret = {}
-            for i, pos in enumerate(self.getNodeList()):
-                ret[pos] = 0.5 * self.Cinv.subs(p_subs)[i, i] * self.SS.qcp**2
-            return ret
-        else:
-            i = self.getNodeList().index(node)
-            return 0.5 * self.Cinv.subs(p_subs)[i, i] * self.SS.qcp**2
-    
     def getChargingEnergies(self, node=None):
         if node is None:
             ret = {}
@@ -963,19 +890,6 @@ class NumericalSystem(ds.TempData):
             i = self.getNodeList().index(node)
             return 0.5 * self.Linvnp[i, i] * self.units.getPrefactor("El")
     
-    def getSymbolicJosephsonEnergies(self, edge=None):
-        # Check for parameterisations
-        p_subs = dict([(self.all_params_sym[k], v) for k, v in self.params_subs.items()])
-        
-        if edge is None:
-            ret = {}
-            for i, edge in enumerate(self.SS.edges):
-                ret[edge] = self.Jvec.subs(p_subs)[i] * self.SS.phi0/(2*self.SS.pi)
-            return ret
-        else:
-            i = self.SS.edges.index(edge)
-            return self.Jvec.subs(p_subs)[i] * self.SS.phi0/(2*self.SS.pi)
-    
     def getJosephsonEnergies(self, edge=None):
         if edge is None:
             ret = {}
@@ -995,8 +909,8 @@ class NumericalSystem(ds.TempData):
             return None
         
         # Get the model parameters
-        gC = self.SS.getParameterValue('g%ir'%cpl_node)
-        wrl = self.SS.getParameterValue('f%irl'%cpl_node)
+        gC = self.SS.getParameterValue('g%ir' % cpl_node)
+        wrl = self.SS.getParameterValue('f%irl' % cpl_node)
         
         # Get the operator associated with selected node
         index = self.getNodeList().index(cpl_node)
@@ -1016,13 +930,12 @@ class NumericalSystem(ds.TempData):
         
         # Diagonalise RWA strips
         order = np.zeros(tmax, dtype=np.int)
-        diag_bare = np.array([-i*wrl + E[i]
-                              for i in range(tmax)])
+        diag_bare = np.array([-i*wrl + E[i] for i in range(tmax)])
         eigensolver_order = np.linalg.eigvalsh(np.diag(diag_bare))
         for i in range(tmax):
-            index, = np.where(eigensolver_order==diag_bare[i])
+            index, = np.where(eigensolver_order == diag_bare[i])
             order[i] = index[0]
-        Erwa = [0.0]*nmax
+        Erwa = [0.0] * nmax
         diagonal_elements = None
         offdiagonal_elements = None
         strip_H = None
@@ -1036,9 +949,6 @@ class NumericalSystem(ds.TempData):
             Erwa[n] = np.array([e[i].real for i in order])
         
         return np.array(Erwa)
-    
-    def sparsity(self, op):
-        return 1 - op.data.nnz/self.getHilbertSpaceSize()**2
     
     ###################################################################################################################
     #       Diagonaliser Configuration
@@ -1069,11 +979,6 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     #       Parameter Collection Wrapper Functions and Extended Functions
     ###################################################################################################################
-    
-    ## FIXME: All of these functions should be inherited from Parameters. Parameters should be made to work with the
-    ## symbols to avoid having to update both the symbols and the parameters in the present class. Similarly, 
-    ## the parameterisations could then be built into the Parameters class. Then we just need that class to have a
-    ## getter for the substitutions
     
     ## Create a sweep specification for a single parameter.
     def sweepSpec(self, *args, **kwargs):
