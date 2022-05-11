@@ -165,17 +165,74 @@ class CircuitGraph:
         
         self.charge_bias_nodes[node] = component
     
+    def isCapacitiveEdge(self, edge):
+        cstr = self.components_map[edge]
+        if cstr[0] == self._element_prefixes[0]:
+            return True
+        return False
+    
     def isInductiveEdge(self, edge):
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[1]:
             return True
         return False
     
-    def isCapacitiveEdge(self, edge):
+    def isJosephsonEdge(self, edge):
         cstr = self.components_map[edge]
-        if cstr[0] == self._element_prefixes[0]:
+        if cstr[0] == self._element_prefixes[2]:
             return True
         return False
+    
+    def isPhaseSlipEdge(self, edge):
+        cstr = self.components_map[edge]
+        if cstr[0] == self._element_prefixes[3]:
+            return True
+        return False
+    
+    def getCapacitiveEdges(self):
+        edges_map = {v: k for k, v in self.components_map.items()}
+        ret = {}
+        for c, edge in edges_map.items():
+            if c[0] == self._element_prefixes[0]:
+                ret[c] = edge
+        return ret
+    
+    def getInductiveEdges(self):
+        edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
+        ret = {}
+        for c, edge in edges_map.items():
+            if c[0] == self._element_prefixes[1]:
+                ret[c] = edge
+        return ret
+    
+    def getJosephsonEdges(self):
+        edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
+        ret = {}
+        for c, edge in edges_map.items():
+            if c[0] == self._element_prefixes[2]:
+                ret[c] = edge
+        return ret
+    
+    def getPhaseSlipEdges(self):
+        edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
+        ret = {}
+        for c, edge in edges_map.items():
+            if c[0] == self._element_prefixes[3]:
+                ret[c] = edge
+        return ret
+    
+    def getComponentEdge(self, component):
+        if component not in self.components_map.values():
+            raise Exception("Component %s does not exist." % component)
+        
+        # Capacitive edges are not directional
+        if component[0] == self._element_prefixes[0]:
+            edges_map = {v: k for k, v in self.components_map.items()}
+            return edges_map[component]
+        
+        # Other edges are directional
+        edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
+        return edges_map[component]
     
     #
     # DRAWING

@@ -3,6 +3,16 @@
 import os
 import numpy as np
 import sympy as sy
+import networkx as nx
+import graphviz as gv
+import pydot as pd
+import platform
+
+# FIXME: Make this more intelligent
+if platform.system() == 'Windows':
+    import os
+    os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
+
 from . import text2latex as t2l
 from . import util
 
@@ -210,6 +220,7 @@ class ParamCollection:
         self.__collection = {}
         self.__symbol_map = {}
         self.__parameterisation = {}
+        self.__parameterisation_graph = nx.DiGraph()
         for name in names:
             self.__collection[name] = Param(name)
             self.__symbol_map[name] = self.__collection[name].symbol
@@ -424,13 +435,19 @@ class ParamCollection:
         if len(list(name_value_pairs)) == 1:
             if type(name_value_pairs[0]) is not dict:
                 raise Exception("Argument should be a dictionary, not '%s'." % repr(type(name_value_pairs[0])))
-            for k,v in name_value_pairs[0].items():
-                self.__collection[k].setValue(v)
-            return
+            #for k,v in name_value_pairs[0].items():
+            #    self.__collection[k].setValue(v)
+            #return
         
         # Seperate names from values
-        keys = list(name_value_pairs)[::2]
-        values = list(name_value_pairs)[1::2]
+        keys = None
+        values = None
+        if type(name_value_pairs[0]) == dict:
+            keys = list(name_value_pairs[0].keys())
+            values = list(name_value_pairs[0].values())
+        else:
+            keys = list(name_value_pairs)[::2]
+            values = list(name_value_pairs)[1::2]
         
         # Check there are as many parameters as values
         if len(keys) != len(values):
@@ -498,7 +515,7 @@ class ParamCollection:
     #       Parameterisations
     ###################################################################################################################
     
-    def getSymbols(self, *names):
+    def getSymbols(self, *names, symbol_overrides=None):
         """ Generates a set of `sympy` symbols for use in parameterisation. They are added as independent Param instances.
         The symbols are returned in a dictionary so that they can be used to create expressions.
         
@@ -510,12 +527,16 @@ class ParamCollection:
         :return: A dictionary of `sympy` symbols with the parameter names as keys
         :rtype: dict
         """
+        if symbol_overrides is None:
+            symbol_overrides = [None]*len(list(names))
+        else:
+            symbol_overrides = list(symbol_overrides)
         values = {}
-        for name in list(names):
+        for i, name in enumerate(list(names)):
             # Check name is defined
             if type(name) != str:
                 raise Exception("Parameter name %s is not a string." % repr(name))
-            self.addParameter(name)
+            self.addParameter(name, symbol_override=symbol_overrides[i])
             values[name] = self.__symbol_map[name]
         return values
     
@@ -552,7 +573,15 @@ class ParamCollection:
                 raise Exception("Symbol '%s' not registered." % repr(sym))
             names.append(rev_map[sym])
         
+        for pname in names:
+            # Add an edge to the graph if this parameterisation depends on others
+            if pname in self.__parameterisation.keys():
+                self.__parameterisation_graph.add_edge(pname, name)
+        
+        # Check if this name     
+        
         # Register the parameterisation
+        self.__parameterisation_graph.add_node(name)
         self.__parameterisation[name] = {
             "expression": expression,
             "parameters": names
@@ -625,8 +654,11 @@ class ParamCollection:
         if name not in list(self.__parameterisation.keys()):
             raise Exception("'%s' parameter is not parameterised." % name)
         
-        # Also remove the actual parameters?
         
+        # If we want to remove the associated parameters, we'll also need to check they can actually be removed without breaking everything
+        #for sname in self.__parameterisation[name]["parameters"]:
+        #    del self.__collection[sname]
+        self.__parameterisation_graph.remove_node(name)
         del self.__parameterisation[name]
     
     def parameterisationParametersSet(self, name):
@@ -647,6 +679,42 @@ class ParamCollection:
         if None in self.getParameterValues(*names).values():
             return False
         return True
+    
+    def getParameterisationsInvolving(self, *names):
+        """ Gets the list of parametric parameters that depend on the supplied parameter names. Returning an empty list if `name` is parametric parameter or doesn't exist in any parametric expressions.
+        
+        :param \*names: The names of the parameters.
+        :type \*names: str
+        
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        
+        :return: A list of parametric parameters. The list is empty if a parametric parameter is supplied as `name`.
+        :rtype: list
+        """
+        pnames = []
+        for name in list(names):
+            if name not in list(self.__collection.keys()):
+                raise Exception("'%s' parameter was not found." % name)
+            
+            if name in list(self.__parameterisation.keys()):
+                return []
+            
+            for pname in self.getParametricParametersList():
+                if name in self.getParameterisationParameters(pname):
+                    if pname not in pnames:
+                        pnames.append(pname)
+        return pnames
+    
+    def drawParameterisationGraph(self, filename=None):
+        # Get the pydot graph
+        pd_graph = nx.nx_pydot.to_pydot(self.__parameterisation_graph)
+        
+        # Compile the graphviz source
+        gv_graph = gv.Source(pd_graph.create(format='dot').decode('utf8'))
+        
+        # Return the object, which should be rendered in a jupyter notebook
+        if filename is None:
+            return gv_graph
     
     ###################################################################################################################
     #       Parameter Sweeping Functions
@@ -770,20 +838,37 @@ class ParamCollection:
                 self.sweep_grid_c_len = len(self.sweep_grid_c[k])
     
     def getSweepParametersDict(self):
-        """ Gets the list of parameters that will be swept.
+        """ Gets the list of parameters that will be swept, and substituted into the circuit equations during the evaluation loop.
         
         :return: A list of parameter names.
         :rtype: list
         """
-        return self.getSymbolValues(*self.sweep_grid_params)
+        
+        # Need to ensure that we substitute the parameterised parameter
+        actual_sub_names = self.sweep_grid_params.copy()
+        for name in self.sweep_grid_params:
+            pnames = self.getParameterisationsInvolving(name)
+            if len(pnames) > 0:
+                actual_sub_names.remove(name)
+                actual_sub_names.extend(pnames)
+        actual_subs_names = list(set(actual_sub_names))
+        return self.getSymbolValues(*actual_sub_names)
     
     def getNonSweepParametersDict(self):
-        """ Gets the symbol-value dictionary of parameters that will NOT be swept.
+        """ Gets the symbol-value dictionary of parameters that will NOT be swept, and substituted into the circuit equations before the evaluation loop.
         
         :return: A dictionary of symbol value pairs.
         :rtype: dict
         """
-        non_sweep = list(set(self.__collection.keys()) - set(self.sweep_grid_params))
+        
+        # Need to ensure that we substitute the parameterised parameter
+        actual_sub_names = self.sweep_grid_params.copy()
+        for name in self.sweep_grid_params:
+            pnames = self.getParameterisationsInvolving(name)
+            if len(pnames) > 0:
+                actual_sub_names.remove(name)
+                actual_sub_names.extend(pnames)
+        non_sweep = list(set(self.__collection.keys()) - set(actual_sub_names))
         return self.getSymbolValues(*non_sweep)
     
     def collapsedIndices(self, *indices):
@@ -801,7 +886,7 @@ class ParamCollection:
             Narr[i] = self.__collection[k].N
         
         # Convert indices to collapsed format
-        return sum([int(np.prod(Narr[i+1:]))*index for i,index in enumerate(list(indices))])
+        return sum([int(np.prod(Narr[i+1:]))*index for i, index in enumerate(list(indices))])
     
     def computeFuncSweep(self, func, spec, *fcn_args, **fcn_kwargs):
         """ Compute a function over a sweep. Uses the collapsed grid created by :func:`ndSweep` internally.
@@ -1030,12 +1115,47 @@ class ParamCollection:
     ###################################################################################################################
     
     def _update_parameterisations(self):
-        try:
-            for k, v in self.__parameterisation.items():
-                subs = self.getSymbolValues(*v['parameters'])
-                self.__collection[k].setValue(float(v['expression'].subs(subs)))
-        except:
-            pass
+        
+        checked_nodes = set()
+        checked_edges = set()
+        G = self.__parameterisation_graph
+        all_nodes = set(G.nodes)
+        all_edges = set(G.edges)
+        
+        # Start with the nodes that have no in_degree (independent parameterisations)
+        names = [node for node in all_nodes if G.in_degree[node] == 0]
+        for name in names:
+            params = self.__parameterisation[name]
+            subs = self.getSymbolValues(*params['parameters'])
+            self.__collection[name].setValue(float(params['expression'].subs(subs)))
+            checked_nodes.add(name)
+        if checked_nodes == all_nodes:
+            #print("All nodes checked")
+            return
+        
+        # Now we need to iterate until all nodes are accounted for
+        while checked_edges != all_edges and not self.allParametersSet():
+            # Get the next set of names to check
+            new_names = []
+            for name in names:
+                edges = G.out_edges(name)
+                new_names.extend([edge[1] for edge in edges])
+                checked_edges |= set(edges)
+            
+            # Perform the update
+            for name in new_names:
+                params = self.__parameterisation[name]
+                subs = self.getSymbolValues(*params['parameters'])
+                self.__collection[name].setValue(float(params['expression'].subs(subs)))
+            
+            names = new_names.copy()
+        
+        #try:
+        #    for k, v in self.__parameterisation.items():
+        #        subs = self.getSymbolValues(*v['parameters'])
+        #        self.__collection[k].setValue(float(v['expression'].subs(subs)))
+        #except:
+        #    pass
 
 
 

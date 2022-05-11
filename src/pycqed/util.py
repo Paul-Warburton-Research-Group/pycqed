@@ -284,6 +284,20 @@ def isStoquastic(H, order=[2,3]):
                     return False
     return True
 
+def createSubspaceOperators(m00, m01, m10, m11):
+    """
+    """
+    Op = None
+    ret = []
+    for i in range(len(m00)):
+        Op = np.asmatrix(np.eye(2), dtype=np.complex64)
+        Op[0, 0] = m00[i]
+        Op[0, 1] = m01[i]
+        Op[1, 0] = m10[i]
+        Op[1, 1] = m11[i]
+        ret.append(Op)
+    return ret
+
 def pauliCoefficients(E, V, basis_op):
     """ Performs Hamiltonian reduction to a two-dimensional Hilbert space useful for describing qubits as spins. This function returns the Pauli coefficients :math:`h_\mathrm{x,y,z}` of the corresponding spin operators :math:`\hat{\sigma}_\mathrm{x,y,z}`. We use the 'local basis' approach developed by G. Consani :cite:`Consani2019` which is superior to traditional qubit circuit Hamiltonian reduction methods.
     
@@ -301,24 +315,38 @@ def pauliCoefficients(E, V, basis_op):
     :return: The list of :math:`h_\mathrm{x,y,z}` values for each value of the swept variable.
     :rtype: (numpy.ndarray, numpy.ndarray, numpy.ndarray)
     """
-    Oq = None
+    
+    def get_subspace_operator(V0, V1, Oq, i):
+        Op = np.asmatrix(np.eye(2), dtype=np.complex64)
+        Op[0, 0] = Oq.matrix_element(V0, V0)
+        Op[0, 1] = Oq.matrix_element(V0, V1)
+        Op[1, 0] = Oq.matrix_element(V1, V0)
+        Op[1, 1] = Oq.matrix_element(V1, V1)
+        return Op
+    
+    def ret_subspace_operator(V0, V1, Oq, i):
+        return Oq[i]
+    
+    op_func = None
     if type(basis_op) == qt.qobj.Qobj and type(E) in [list, np.ndarray] and type(V) in [list, np.ndarray]:
-        Oq = [basis_op]*len(E[0])
+        #Oq = [basis_op]*len(E[0]) # This should be too memory intensive as its the same object reference repeated.
+        op_func = get_subspace_operator
     elif type(basis_op) in [list, np.ndarray] and type(E) in [list, np.ndarray] and type(V) in [list, np.ndarray]:
-        Oq = basis_op
+        #Oq = basis_op
+        op_func = ret_subspace_operator
     else:
-        raise Exception("incompatible input types for E (%s), V (%s) and basis_op (%s)." % (type(E),type(V),type(basis_op)))
+        raise Exception("incompatible input types for E (%s), V (%s) and basis_op (%s)." % (type(E), type(V), type(basis_op)))
     
     # Get Paulis
-    ox = np.asmatrix(qt.sigmax().data.todense(),dtype=np.complex64)
-    oy = np.asmatrix(qt.sigmay().data.todense(),dtype=np.complex64)
-    oz = np.asmatrix(qt.sigmaz().data.todense(),dtype=np.complex64)
+    ox = np.asmatrix(qt.sigmax().data.todense(), dtype=np.complex64)
+    oy = np.asmatrix(qt.sigmay().data.todense(), dtype=np.complex64)
+    oz = np.asmatrix(qt.sigmaz().data.todense(), dtype=np.complex64)
     
     # Get ground and first excited states
-    E0 = E[0,:]
-    E1 = E[1,:]
-    V0 = V[0,:]
-    V1 = V[1,:]
+    E0 = E[0, :]
+    E1 = E[1, :]
+    V0 = V[0, :]
+    V1 = V[1, :]
     
     # Get the Pauli prefactors
     hx = []
@@ -334,33 +362,34 @@ def pauliCoefficients(E, V, basis_op):
     for i in range(len(E0)):
         
         # Create computational basis subspace operator
-        Op = np.asmatrix(np.eye(2), dtype=np.complex64)
-        Op[0,0] = (V0[i].dag()*Oq[i]*V0[i])[0][0][0]
-        Op[0,1] = (V0[i].dag()*Oq[i]*V1[i])[0][0][0]
-        Op[1,0] = (V1[i].dag()*Oq[i]*V0[i])[0][0][0]
-        Op[1,1] = (V1[i].dag()*Oq[i]*V1[i])[0][0][0]
+        Op = op_func(V0[i], V1[i], basis_op, i)
+        #Op = np.asmatrix(np.eye(2), dtype=np.complex64)
+        #Op[0,0] = (V0[i].dag()*Oq[i]*V0[i])[0][0][0]
+        #Op[0,1] = (V0[i].dag()*Oq[i]*V1[i])[0][0][0]
+        #Op[1,0] = (V1[i].dag()*Oq[i]*V0[i])[0][0][0]
+        #Op[1,1] = (V1[i].dag()*Oq[i]*V1[i])[0][0][0]
         
         # Get its eigenvectors as a matrix
         El, Vl = np.linalg.eigh(Op)
         
         # Apply the gauge transformation to the eigenvectors
-        Vl = np.array([np.abs(Vl[0,k])/Vl[0,k]*Vl[:, k] for k in (0,1)])
+        Vl = np.array([np.abs(Vl[0, k])/Vl[0, k] * Vl[:, k] for k in (0, 1)])
         
         # Create the unitary
         U = np.asmatrix(Vl.T, dtype=np.complex64)
         Udag = U.conjugate().T
         
         # Create Hq prime
-        Hqp = np.asmatrix(np.diag([E0[i],E1[i]]), dtype=np.complex64)
+        Hqp = np.asmatrix(np.diag([E0[i], E1[i]]), dtype=np.complex64)
         
         # Apply the transformation
-        Hq = mdot(Udag,Hqp,U)
+        Hq = mdot(Udag, Hqp, U)
         
         # Do the projection
-        hx.append(np.real(0.5*np.dot(Hq,ox).trace()[0,0]))
-        hy.append(np.real(0.5*np.dot(Hq,oy).trace()[0,0]))
-        hz.append(np.real(0.5*np.dot(Hq,oz).trace()[0,0]))
-    return np.array(hx),np.array(hy),np.array(hz)
+        hx.append(np.real(0.5*np.dot(Hq, ox).trace()[0, 0]))
+        hy.append(np.real(0.5*np.dot(Hq, oy).trace()[0, 0]))
+        hz.append(np.real(0.5*np.dot(Hq, oz).trace()[0, 0]))
+    return np.array(hx), np.array(hy), np.array(hz)
 
 def getEigenValuesAndVectors(sweep):
     """ Convenience function to separate the eigenvalues from the eigenvectors of a parameter sweep returned by :func:`pycqed.src.HamilSpec.getSweep`. When the diagonaliser is configured to return both eigenvalues and vectors, the dtype of the `numpy.ndarray` will be `object`, which results in conversion issues for example in `matplotlib`. This function performs the conversion of the `numpy.ndarray` dtype.

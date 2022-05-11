@@ -15,14 +15,6 @@ from . import units
 
 class NumericalSystem(ds.TempData):
     
-    ## Available basis representations
-    __basis_repr = [
-        "charge", 
-        "flux", 
-        "oscillator", 
-        "custom"
-    ]
-    
     ## Mode types
     __mode_types = [
         "osc", # DoFs have capacitive and inductive parts only
@@ -30,21 +22,6 @@ class NumericalSystem(ds.TempData):
         "isl", # DoFs have capacitive parts only
         "leg"  # DoFs have inductive parts only
     ]
-    
-    ## FIXME: Consider listing dependencies here too
-    __eval_avail = [
-        "getHamiltonian", 
-        "getBranchCurrents", 
-        "getNodeVoltages", 
-        "getChargingEnergies", 
-        "getJosephsonEnergies", 
-        "getResonatorResponse"
-    ]
-    
-    __eval_spec = {
-        "Hamiltonian": {'eval': 'getHamiltonian', 'diag': True, 'depends': None, 'kwargs': {}},
-        "Resonator":   {'eval': 'getResonatorResponse', 'diag': False, 'depends': 'Hamiltonian', 'kwargs': {}}
-    }
     
     ## Initialise a Hamiltonian using a circuit specification
     def __init__(self, symbolic_system, unit=units.Units("CQED1")):
@@ -61,10 +38,6 @@ class NumericalSystem(ds.TempData):
         self.circ_operators = {}
         self.operator_data = {}
         
-        # Mode truncations and basis representation, also indicates whether
-        # operators need to be considered for regeneration when parameters are changed.
-        self.mode_truncations = {}
-        
         # Coordinate transformation matrix
         self.Rmat = 1.0
         self.RmatT = 1.0
@@ -80,6 +53,9 @@ class NumericalSystem(ds.TempData):
         
         # Load default diagonaliser configuration
         self.setDiagConfig()
+        
+        # Init the sweeper data
+        self._init_sweep_data()
     
     # Called when deleting
     def __del__(self):
@@ -91,6 +67,18 @@ class NumericalSystem(ds.TempData):
     def getNodeIndex(self, node):
         return self.SS.nodes.index(node)
     
+    def getEdgeList(self):
+        return self.SS.edges
+    
+    def getEdgeIndex(self, edge):
+        return self.SS.edges.index(edge)
+    
+    def getCircuitGraph(self):
+        return self.SS.CG
+    
+    def getSymbolicSystem(self):
+        return self.SS
+    
     ## Get Hilbert space size
     def getHilbertSpaceSize(self):
         """ Returns the Hilbert space size considering all currently defined operator truncations.
@@ -99,8 +87,9 @@ class NumericalSystem(ds.TempData):
         :rtype: int
         """
         ret = 1
-        for m in list(self.mode_truncations.keys()):
-            trunc, basis, update = self.mode_truncations[m]
+        for k, v in self.operator_data.items():
+            trunc = v["truncation"]
+            basis = v["basis"]
             if basis == "charge":
                 ret *= (2*trunc+1)
             elif basis == "oscillator":
@@ -132,6 +121,42 @@ class NumericalSystem(ds.TempData):
             
             # Get the correct commutator
             return qt.commutator(P, Q)*corrmat
+    
+    ## Available basis representations
+    __basis_repr = [
+        "charge", 
+        "flux", 
+        "oscillator", 
+        "custom"
+    ]
+    
+    def configureOperator(self, node, trunc, basis, fmax=4.0):
+        if node not in self.getNodeList():
+            raise Exception("Node '%i' is not a valid circuit node." % node)
+        
+        # Get the operator circuit-dependent parameters
+        impedance = None
+        frequency = None
+        update = False
+        flux_max = None
+        if basis == "oscillator":
+            update = True
+            index = self.getNodeIndex(node)
+            Linv = self.SS.getInverseInductanceMatrix()
+            Cinv = self.SS.getInverseCapacitanceMatrix()
+            impedance = sy.sqrt(Cinv[index, index]/Linv[index, index])
+            frequency = sy.sqrt(Linv[index, index]*Cinv[index, index])
+        elif basis == "flux":
+            flux_max = fmax
+        
+        self.operator_data[node] = {
+            "truncation": trunc, 
+            "basis": basis, 
+            "update": update, 
+            "impedance": impedance, 
+            "frequency": frequency,
+            "flux_max": flux_max
+        }
     
     def getOperatorList(self, node):
         Q = None
@@ -239,34 +264,6 @@ class NumericalSystem(ds.TempData):
             
         return Q, P, D, Ddag
     
-    def configureOperator(self, node, trunc, basis, fmax=4.0):
-        if node not in self.getNodeList():
-            raise Exception("Node '%i' is not a valid circuit node." % node)
-        
-        # Get the operator circuit-dependent parameters
-        impedance = None
-        frequency = None
-        update = False
-        flux_max = None
-        if basis == "oscillator":
-            update = True
-            index = self.getNodeIndex(node)
-            Linv = self.SS.getInverseInductanceMatrix()
-            Cinv = self.SS.getInverseCapacitanceMatrix()
-            impedance = sy.sqrt(Cinv[index, index]/Linv[index, index])
-            frequency = sy.sqrt(Linv[index, index]*Cinv[index, index])
-        elif basis == "flux":
-            flux_max = fmax
-        
-        self.operator_data[node] = {
-            "truncation": trunc, 
-            "basis": basis, 
-            "update": update, 
-            "impedance": impedance, 
-            "frequency": frequency,
-            "flux_max": flux_max
-        }
-    
     ## Expand operator Hilbert spaces and update mapping to associated symbols
     def getExpandedOperatorsMap(self):
         """ Creates all the operators associated with each node in the currently defined circuit. The operators are expanded into the total Hamiltonian Hilbert space.
@@ -322,100 +319,6 @@ class NumericalSystem(ds.TempData):
             op_dict["disp_adj"] = qt.tensor(Olist)
             
             self.circ_operators[node] = op_dict.copy()
-    
-    def regenOps(self, pos, params={"basis":"osc", "osc_impedance":50.0}):
-        
-        # Get the pos list for indexing the DoFs
-        node_list = self.getNodeList()
-        i = node_list.index(pos)
-        
-        # Generate the Hilbert space expanders
-        Ilist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
-        for i, pos in enumerate(node_list):
-            trunc, basis, update = self.mode_truncations[pos]
-            if basis == "osc":
-                Ilist[i] = qt.qeye(trunc)
-            elif basis == "charge":
-                Ilist[i] = qt.qeye(2*trunc+1)
-        
-        # Indices minus the current index
-        indices = list(range(len(node_list)))
-        indices.remove(i)
-        
-        # Edit the circuit operators
-        op_dict = {}
-        Olist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
-        trunc, basis, update = self.mode_truncations[pos]
-        Q, P, D, Ddag = self.getOperatorList(trunc, **params)
-        
-        Olist[i] = Q
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["charge"] = qt.tensor(Olist)
-        
-        Olist[i] = P
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["flux"] = qt.tensor(Olist)
-        
-        Olist[i] = D
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["disp"] = qt.tensor(Olist)
-        
-        Olist[i] = Ddag
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["disp_adj"] = qt.tensor(Olist)
-        
-        self.circ_operators[pos] = op_dict.copy()
-    
-    def regenOp(self, pos, params={"basis":"osc", "osc_impedance":50.0}):
-        
-        # Get the pos list for indexing the DoFs
-        node_list = self.getNodeList()
-        i = node_list.index(pos)
-        
-        # Generate the Hilbert space expanders
-        Ilist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
-        for i, pos in enumerate(node_list):
-            trunc, basis, update = self.mode_truncations[pos]
-            if basis == "osc":
-                Ilist[i] = qt.qeye(trunc)
-            elif basis == "charge":
-                Ilist[i] = qt.qeye(2*trunc+1)
-        
-        # Indices minus the current index
-        indices = list(range(len(node_list)))
-        indices.remove(i)
-        
-        # Edit the circuit operators
-        op_dict = {}
-        Olist = np.empty([len(node_list)], dtype=np.dtype(qt.Qobj))
-        trunc, basis, update = self.mode_truncations[pos]
-        Q, P, D, Ddag = self.getOperatorList(trunc, **params)
-        
-        Olist[i] = Q
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["charge"] = qt.tensor(Olist)
-        
-        Olist[i] = P
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["flux"] = qt.tensor(Olist)
-        
-        Olist[i] = D
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["disp"] = qt.tensor(Olist)
-        
-        Olist[i] = Ddag
-        for j in indices:
-            Olist[j] = Ilist[j]
-        op_dict["disp_adj"] = qt.tensor(Olist)
-        
-        self.circ_operators[pos] = op_dict.copy()
     
     ###################################################################################################################
     #       Hamiltonian Building Functions
@@ -787,8 +690,17 @@ class NumericalSystem(ds.TempData):
     #       Evaluables
     ###################################################################################################################
     
+    __eval_spec = {
+        "Hamiltonian":        {'eval': 'getHamiltonian', 'diag': True, 'depends': None, 'kwargs': {}},
+        "Resonator":          {'eval': 'getResonatorResponse', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
+        "Current":            {'eval': 'getCurrentMatrixElement', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
+        "Voltage":            {'eval': 'getVoltageMatrixElement', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
+        "ChargingEnergy":     {'eval': 'getChargingEnergies', 'diag': False, 'depends': None, 'kwargs': {}},
+        "FluxEnergy":         {'eval': 'getFluxEnergies', 'diag': False, 'depends': None, 'kwargs': {}},
+        "JosephsonEnergy":    {'eval': 'getJosephsonEnergies', 'diag': False, 'depends': None, 'kwargs': {}}
+    }
+    
     def getHamiltonian(self):
-        
         # Get charging energy
         self.Hq = self.units.getPrefactor("Ec")*0.5*\
         util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)
@@ -806,69 +718,77 @@ class NumericalSystem(ds.TempData):
         self.Ht = (self.Hq+self.Hp+self.Hj)[0, 0]
         return self.Ht
     
-    def getBranchCurrents(self):
-        # FIXME: This should compute for a single branch per loop that isn't shared in other loops
-        # Get edge components
-        node_list = self.SS.nodes
-        edge_list = self.SS.edges
+    def getCurrentOperator(self, edge=None):
+        # Check edge
+        if edge is None:
+            raise Exception("No edge specified for branch current operator.")
+        if edge not in self.getEdgeList():
+            raise Exception("Edge %s not in the circuit. Check that it is in the right direction." % repr(edge))
+        i = self.getEdgeIndex(edge)
         
-        # Branch currents
-        P = self.Pnp #+self.Pbnp
-        J = 0.5j*(util.mdot(self.Pexpbnpc, self.Dl_adj, self.Dr_adj) - util.mdot(self.Pexpbnp, self.Dl, self.Dr))
-        #R = np.asmatrix(self.SS.getNodeToBranchMatrix(), dtype=np.float64)
-        self.Iops = {}
-        for i, edge in enumerate(edge_list):
-            # Check if edge has an inductor
-            if self.SS.CG.isInductiveEdge(edge):
-                n1, n2, k = edge
-                if n1 > 0:
-                    P1 = P[0, node_list.index(n1)]
-                else:
-                    P1 = 0.0
-                if n2 > 0:
-                    P2 = P[0, node_list.index(n2)]
-                else:
-                    P2 = 0.0
-
-                # Take difference of node fluxes of corresponding branch and use *branch* inverse inductance matrix
-                #self.Iops[edge] = self.units.getPrefactor("IopL")*(P2-P1)*util.mdot(R, self.Linvnp)[i, i]
-                self.Iops[edge] = self.units.getPrefactor("IopL")*(P2 - P1)*self.Linvnp_b[i, i]
+        # Inductive edge type should generally be favoured
+        if self.getCircuitGraph().isInductiveEdge(edge):
+            # Construct the correct node flux operators
+            n1, n2, k = edge
+            if n1 > 0:
+                P1 = self.Pnp[0, self.getNodeIndex(n1)]
             else:
-                self.Iops[edge] = self.units.getPrefactor("IopJ")*J.T[0, i]*self.Jvecnp[0, i]
-        return self.Iops
-    
-    def getNodeVoltages(self):
+                P1 = 0.0
+            if n2 > 0:
+                P2 = self.Pnp[0, self.getNodeIndex(n2)]
+            else:
+                P2 = 0.0
+
+            # Take difference of node fluxes of corresponding branch and use *branch* inverse inductance matrix
+            return self.units.getPrefactor("IopL") * (P2 - P1) * self.Linvnp_b[i, i]
         
-        # Get edge components
-        node_list = self.SS.nodes
-        
-        # Node voltages
-        Q = self.Qnp + self.Qbnp
-        self.Vops = {}
-        for i, node in enumerate(node_list):
-            self.Vops[node] = self.units.getPrefactor("Vop")*Q[i, 0]*self.Cinvnp[i, i]
-        return self.Vops
-    
-    def getOpExpectationValue(self, op, lket, rket):
-        # FIXME: qutip has since fully implemented expectation values in this way
-        if type(op) == qt.qobj.Qobj and type(lket) == qt.qobj.Qobj and type(rket) == qt.qobj.Qobj:
-            return (lket.dag()*op*rket)[0][0][0]
-        elif type(op) in [list, np.ndarray] and type(lket) == qt.qobj.Qobj and type(rket) == qt.qobj.Qobj:
-            return np.array([(lket.dag()*opi*rket)[0][0][0] for opi in op])
-        elif type(op) in [list, np.ndarray] and type(lket) in [list, np.ndarray] and type(rket) in [list, np.ndarray]:
-            return np.array([(lket[i].dag()*op[i]*rket[i])[0][0][0] for i in range(len(op))])
-        elif type(op) == qt.qobj.Qobj and type(lket) in [list, np.ndarray] and type(rket) in [list, np.ndarray]:
-            return np.array([(lket[i].dag()*op*rket[i])[0][0][0] for i in range(len(lket))])
+        elif self.getCircuitGraph().isJosephsonEdge(edge):
+            
+            # Get the Josephson operators
+            J = 0.5j*(util.mdot(self.Pexpbnpc, self.Dl_adj, self.Dr_adj) - util.mdot(self.Pexpbnp, self.Dl, self.Dr))
+            return self.units.getPrefactor("IopJ")*J.T[0, i]*self.Jvecnp[0, i]
         else:
-            raise Exception("incompatible input types for op (%s), lket (%s) and rket (%s)." % (repr(type(op)), repr(type(lket)), repr(type(rket))))
+            raise Exception("Edge %s is not current-carrying" % repr(edge))
     
-    def getBranchCurrentOperator(self, edge):
-        # FIXME: Check edge exists?
-        return self.Iops[edge]
+    def getCurrentMatrixElement(self, E, V, edge=None, elements=None):
+        # Get the relevant operator
+        Iop = self.getCurrentOperator(edge=edge)
+        
+        # Check the elements
+        if elements is None:
+            raise Exception("No elements specified for current matrix elements.")
+        result = np.zeros(len(elements), dtype=np.float64)
+        for i, indices in enumerate(elements):
+            i1, i2 = indices
+            result[i] = Iop.matrix_element(V[i1], V[i2]).real
+        return result
     
-    def getNodeVoltageOperator(self, node):
-        # FIXME: Check node exists?
-        return self.Vops[node]
+    def getVoltageOperator(self, node=None):
+        # Check node
+        if node is None:
+            raise Exception("No node specified for node voltage operator.")
+        if node not in self.getNodeList():
+            raise Exception("Node %s is not in the circuit." % repr(node))
+        i = self.getNodeIndex(node)
+        
+        # Get charge superoperator including charge offsets
+        Q = self.Qnp + self.Qbnp
+        
+        # Use the inverse capacitance matrix
+        return self.units.getPrefactor("Vop") * Q[i, 0] * self.Cinvnp[i, i]
+    
+    def getVoltageMatrixElement(self, E, V, node=None, elements=None):
+        # Get the relevant operator
+        Vop = self.getVoltageOperator(node=node)
+        
+        # Check the elements
+        if elements is None:
+            raise Exception("No elements specified for voltage matrix elements.")
+        result = np.zeros(len(elements), dtype=np.float64)
+        for i, indices in enumerate(elements):
+            i1, i2 = indices
+            result[i] = Vop.matrix_element(V[i1], V[i2]).real
+        return result
     
     def getChargingEnergies(self, node=None):
         if node is None:
@@ -901,7 +821,6 @@ class NumericalSystem(ds.TempData):
             return self.Jvecnp[0, i] * self.units.getPrefactor("Ej")
     
     def getResonatorResponse(self, E, V, nmax=100, cpl_node=None):
-        
         # Save the derived parameter values for each sweep value
         if cpl_node is None:
             #for k in self.SS.coupled_subsys[self.subsystem]['derived_parameters'].keys():
@@ -920,10 +839,11 @@ class NumericalSystem(ds.TempData):
         E = E - E[0]
         tmax = len(E)
         nmax = nmax + 1 + tmax
-        norm = (V[0].dag()*Op*V[1])[0][0][0] # FIXME
+        norm = Op.matrix_element(V[0], V[1])#(V[0].dag()*Op*V[1])[0][0][0]
         g_list = []
         for i in range(tmax-1):
-            g_list.append((V[i].dag()*Op*V[i+1])[0][0][0]) # FIXME
+            #g_list.append((V[i].dag()*Op*V[i+1])[0][0][0])
+            g_list.append(Op.matrix_element(V[i], V[i+1]))
         
         # Apply the circuit derived prefactor
         g_list = gC * np.abs(np.array(g_list)/norm)
@@ -980,17 +900,11 @@ class NumericalSystem(ds.TempData):
     #       Parameter Collection Wrapper Functions and Extended Functions
     ###################################################################################################################
     
-    ## Create a sweep specification for a single parameter.
-    def sweepSpec(self, *args, **kwargs):
-        return self.SS.paramSweepSpec(*args, **kwargs)
-    
-    ## Create an evaluation specification for a single function.
-    def evalSpec(self, func, diag, depends, **kwargs):
-        return {'eval':func, 'diag':diag, 'depends':depends, 'kwargs':kwargs}
-    
     ## Set the value of a parameter.
     def setParameterValue(self, name, value):
-        return self.SS.setParameterValue(name, value)
+        self.SS.setParameterValue(name, value)
+        self.prepareOperators()
+        self.substitute({})
     
     ## Get the value of a parameter.
     def getParameterValue(self, name):
@@ -1023,7 +937,174 @@ class NumericalSystem(ds.TempData):
     #       Parameter Sweep Functions
     ###################################################################################################################
     
-    def paramSweep(self, sweep_spec, eval_spec=[{'eval':'getHamiltonian', 'diag':True, 'depends':None, 'kwargs':{}}], timesweep=False):
+    def newSweep(self):
+        self._init_sweep_data()
+    
+    ## Create a sweep specification for a single parameter.
+    def addSweep(self, *args, **kwargs):
+        self.sweep_specs.append(self.SS.paramSweepSpec(*args, **kwargs))
+    
+    ## Create an evaluation specification for a single function.
+    def addEvaluation(self, evaluable, **kwargs):
+        if evaluable not in self.__eval_spec.keys():
+            raise Exception("Evaluable '%s' not valid." % evaluable)
+        
+        # Set up the evaluable data
+        data = self.__eval_spec[evaluable].copy()
+        data['kwargs'] = kwargs
+        self.evaluations.append(data)
+        # FIXME: Can implement kwargs checking here
+        # FIXME: Can implement proper order of evaluations here
+    
+    def getSweep(self, data, ind_var, static_vars, evaluable="Hamiltonian"):
+        if evaluable not in self.__eval_spec.keys():
+            raise Exception("Evaluable '%s' not valid." % evaluable)
+        key = self.__eval_spec[evaluable]['eval']
+        return self.SS.getSweepResult(ind_var, static_vars, data=data, key=key)
+    
+    def paramSweep(self, timesweep=False):
+        
+        # Time initialisation
+        if timesweep:
+            init_time = time.time()
+        
+        # FIXME: Automatically configure diagonaliser here, based on data on the evaluables
+        
+        # Check if using default evaluables
+        if len(self.evaluations) == 0:
+            self.evaluations = [self.__eval_spec["Hamiltonian"]]
+        
+        # Generate sweep grid
+        self.SS.ndSweep(self.sweep_specs)
+        
+        # FIXME: Determine if we should be saving the data to temp files rather than in RAM:
+        # Use the diagonaliser configuration, the requested evaluation functions, and the total number of sweep setpoints that will be used.
+        self.__use_temp = True
+        if self.__use_temp:
+            tmp_results = []
+        
+        # Do pre-substitutions to avoid repeating un-necessary substitutions in loops
+        self._presub()
+        
+        # FIXME: Check that all symbolic variables have an associated value at this point
+        
+        # Do the requested evaluations
+        if len(self.evaluations) > 1:
+            
+            # Prepare the results structure
+            results = {}
+            for entry in self.evaluations:
+                results[entry['eval']] = []
+            
+            # Time loop
+            if timesweep:
+                loop_time = time.time()
+            for i in range(self.SS.sweep_grid_npts):
+                # Do the post-substitutions
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
+                
+                # Get requested evaluables
+                E = None
+                V = None
+                for entry in self.evaluations:
+                    
+                    # Check if this evaluable depends on another
+                    if entry['depends'] is not None:
+                        try:
+                            if self.__use_temp:
+                                dep = results[entry['depends']]
+                            else:
+                                dep = results[entry['depends']][i]
+                        except:
+                            raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
+                        
+                        # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
+                        try:
+                            E, V = dep
+                        except:
+                            raise Exception("need eigenvectors for 'depends'")
+                    
+                    # Check if evaluation depends on eigenvalues and eigenvectors
+                    if V is not None:
+                        M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
+                    else:
+                        M = getattr(self, entry['eval'])(**entry['kwargs'])
+                    
+                    # Check if diagonalisation is required
+                    if self.__use_temp:
+                        if entry['diag']:
+                            results[entry['eval']] = self.diagonalize(M)
+                        else:
+                            results[entry['eval']] = M
+                    else:
+                        if entry['diag']:
+                            results[entry['eval']].append(self.diagonalize(M))
+                        else:
+                            results[entry['eval']].append(M)
+                    E = None
+                    V = None
+                
+                if self.__use_temp:
+                    # Write to temp file
+                    f = self.writePart(results)
+                    tmp_results.append(f)
+            
+            # Convert the result entries to ndarray
+            if not self.__use_temp:
+                for entry in self.evaluations:
+                    results[entry['eval']] = np.array(results[entry['eval']])
+        
+        # Do the single requested evaluation
+        else:
+            results = []
+            entry = self.evaluations[0]
+            
+            # Time loop
+            if timesweep:
+                loop_time = time.time()
+            for i in range(self.SS.sweep_grid_npts):
+                # Do the post-substitutions
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
+                
+                # Get requested evaluable
+                M = getattr(self, entry['eval'])(**entry['kwargs'])
+                if self.__use_temp:
+                    if entry['diag']:
+                        results = self.diagonalize(M)
+                    else:
+                        results = M
+                else:
+                    if entry['diag']:
+                        results.append(self.diagonalize(M))
+                    else:
+                        results.append(M)
+                
+                if self.__use_temp:
+                    # Write to temp file
+                    f = self.writePart(results)
+                    tmp_results.append(f)
+            
+            # Convert results to ndarray
+            if not self.__use_temp:
+                results = np.array(results)
+        
+        # Reset the evaluables
+        self._init_sweep_data()
+        
+        # Report timings
+        if timesweep:
+            end_time = time.time()
+            print ("Parameter Sweep Duration:")
+            print ("  Initialization:\t%.3f s" % (loop_time-init_time))
+            print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
+            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.SS.sweep_grid_npts))
+        if self.__use_temp:
+            return tmp_results
+        else:
+            return results
+        
+    
+    def paramSweepOld(self, sweep_spec, eval_spec=[{'eval':'getHamiltonian', 'diag':True, 'depends':None, 'kwargs':{}}], timesweep=False):
         
         # Time initialisation
         if timesweep:
@@ -1154,7 +1235,6 @@ class NumericalSystem(ds.TempData):
             return tmp_results
         else:
             return results
-        
     
     def paramSweepFunc(self, sweep_spec, ufcn, ufcn_args={}, get_vectors=False, sparse=False, sparselevels=6, sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}):
         self.params.ndSweep(sweep_spec)
@@ -1212,12 +1292,14 @@ class NumericalSystem(ds.TempData):
                     
         return np.array(result), np.array(func_result)
     
-    def getSweep(self, data, ind_var, static_vars, evaluable="getHamiltonian"):
-            return self.SS.getSweepResult(ind_var, static_vars, data=data, key=evaluable)
-    
     ###################################################################################################################
     #       Internal Functions
     ###################################################################################################################
+    
+    # Initialises the sweep data
+    def _init_sweep_data(self):
+        self.sweep_specs = []
+        self.evaluations = []
     
     # Replaces np asmatrix
     def _init_qobj_vector(self, obj_list, dtype=None):
