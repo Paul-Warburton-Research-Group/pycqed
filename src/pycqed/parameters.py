@@ -347,6 +347,20 @@ class ParamCollection:
         """
         return list(self.__symbol_map.values())
     
+    def getParameterFromSymbol(self, symbol):
+        """ Gets parameter string name associated with the provided `sympy.Symbol`.
+        
+        :raises Exception: If the symbol does not exist in the collection.
+        
+        :return: The parameter name.
+        :rtype: str
+        """
+        if symbol not in self.__symbol_map.values():
+            raise Exception("Symbol '%s' was not found." % repr(symbol))
+        for k, v in self.__symbol_map.items():
+            if symbol == v:
+                return k
+    
     def setParameterValue(self, name, value):
         """ Set the value of a given parameter.
         
@@ -439,7 +453,7 @@ class ParamCollection:
             #    self.__collection[k].setValue(v)
             #return
         
-        # Seperate names from values
+        # Separate names from values
         keys = None
         values = None
         if type(name_value_pairs[0]) == dict:
@@ -549,7 +563,7 @@ class ParamCollection:
         return list(self.__parameterisation.keys())
     
     def addParameterisation(self, name, expression):
-        """ Registers a parameterisation of the parameter `name` in terms of symbols returned by :func:`getSymbols`. It is allowed to use `sympy` functions such as `sympy.cos` in expressions, and also any previously defined parameters.
+        """ Registers a parameterisation of the parameter `name` in terms of symbols returned by :func:`getSymbols`. It is allowed to use `sympy` functions such as `sympy.cos` in expressions, and also any previously defined parameters. If the parameterisation already exists, it is overwritten.
         
         :param name: The name of the parameter that is being parameterised.
         :type name: str
@@ -557,7 +571,7 @@ class ParamCollection:
         :param expression: A `sympy` expression in terms of other parameters.
         :type expression: float, int, variable
         
-        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds.
+        :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds. Also raises an exception if this parameterisation would cause a cycle in the dependency tree of nested parameterisations.
         
         :return: None
         :rtype: None
@@ -578,7 +592,18 @@ class ParamCollection:
             if pname in self.__parameterisation.keys():
                 self.__parameterisation_graph.add_edge(pname, name)
         
-        # Check if this name     
+        # Check that there are no cycles induced by this parameterisation
+        cycles = None
+        try:
+            cycles = nx.find_cycle(self.__parameterisation_graph, orientation="original")
+        except nx.NetworkXNoCycle:
+            pass
+        if cycles is not None:
+            # Remove the bad edges
+            for pname in names:
+                if pname in self.__parameterisation.keys():
+                    self.__parameterisation_graph.remove_edge(pname, name)
+            raise Exception("Cycle(s) found in parameterisation graph upon addition of name '%s': %s" % (name, repr(cycles)))
         
         # Register the parameterisation
         self.__parameterisation_graph.add_node(name)
@@ -605,11 +630,14 @@ class ParamCollection:
             raise Exception("'%s' parameter is not parameterised." % name)
         self.__parameterisation[name]["expression"] *= prefactor
     
-    def getParametricExpression(self, name):
+    def getParametricExpression(self, name, expand=False):
         """ Gets the `sympy` expression of parameter `name`.
         
         :param name: The name of the parameter.
         :type name: str
+        
+        :param expand: Indicates whether to expand into nested parameterisations
+        :type expand: bool, optional
         
         :raises Exception: If the parameter was not parameterised.
         
@@ -618,8 +646,30 @@ class ParamCollection:
         """
         if name not in list(self.__parameterisation.keys()):
             raise Exception("'%s' parameter is not parameterised." % name)
+        if not expand:
+            return self.__parameterisation[name]["expression"]
         
-        return self.__parameterisation[name]["expression"]
+        def exprParametric(expr):
+            pp = self.getParametricParametersList()
+            for sym in list(expr.free_symbols):
+                p = self.getParameterFromSymbol(sym)
+                if p in pp:
+                    return True
+            return False
+        
+        # Recursively substitute expressions
+        base = self.__parameterisation[name]["expression"]
+        expr = None
+        while exprParametric(base):
+            expr = None
+            for sym in base.free_symbols:
+                try:
+                    subs = {sym: self.getParametricExpression(self.getParameterFromSymbol(sym))}
+                    expr = base.subs(subs)
+                except: # Fail should only be caused when parameter is not parameterised
+                    continue
+            base = expr
+        return base
     
     def getParameterisationParameters(self, name):
         """ Gets the parameters that form the parametric expression of parameter `name`.
@@ -696,6 +746,7 @@ class ParamCollection:
             if name not in list(self.__collection.keys()):
                 raise Exception("'%s' parameter was not found." % name)
             
+            # FIXME: Parameterisations can depend on others
             if name in list(self.__parameterisation.keys()):
                 return []
             
@@ -845,13 +896,16 @@ class ParamCollection:
         """
         
         # Need to ensure that we substitute the parameterised parameter
-        actual_sub_names = self.sweep_grid_params.copy()
+        not_for_presub = set()
         for name in self.sweep_grid_params:
-            pnames = self.getParameterisationsInvolving(name)
-            if len(pnames) > 0:
-                actual_sub_names.remove(name)
-                actual_sub_names.extend(pnames)
-        actual_subs_names = list(set(actual_sub_names))
+            not_for_presub.add(name)
+            params = self.getParameterisationsInvolving(name)
+            for param in params:
+                successors = nx.dfs_successors(self.__parameterisation_graph, param)
+                not_for_presub.add(param)
+                for k, v in successors.items():
+                    not_for_presub |= set(v)
+        actual_sub_names = list(not_for_presub)
         return self.getSymbolValues(*actual_sub_names)
     
     def getNonSweepParametersDict(self):
@@ -861,14 +915,18 @@ class ParamCollection:
         :rtype: dict
         """
         
-        # Need to ensure that we substitute the parameterised parameter
-        actual_sub_names = self.sweep_grid_params.copy()
+        # For each parameter we want to find it's parametric dependencies, and then exclude those.
+        not_for_presub = set()
         for name in self.sweep_grid_params:
-            pnames = self.getParameterisationsInvolving(name)
-            if len(pnames) > 0:
-                actual_sub_names.remove(name)
-                actual_sub_names.extend(pnames)
-        non_sweep = list(set(self.__collection.keys()) - set(actual_sub_names))
+            not_for_presub.add(name)
+            params = self.getParameterisationsInvolving(name)
+            for param in params:
+                successors = nx.dfs_successors(self.__parameterisation_graph, param)
+                not_for_presub.add(param)
+                for k, v in successors.items():
+                    not_for_presub |= set(v)
+        
+        non_sweep = list(set(self.__collection.keys()) - not_for_presub)
         return self.getSymbolValues(*non_sweep)
     
     def collapsedIndices(self, *indices):
@@ -1114,6 +1172,41 @@ class ParamCollection:
     #       Internal
     ###################################################################################################################
     
+    def _get_pc_internal_data(self):
+        return (
+            self.__collection,
+            self.__symbol_map,
+            self.__parameterisation,
+            self.__parameterisation_graph
+        )
+    
+    def _set_pc_internal_data(self, data):
+        self.__collection = data[0]
+        self.__symbol_map = data[1]
+        self.__parameterisation = data[2]
+        self.__parameterisation_graph = data[3]
+    
+    # Use this with care, probably many scenarios where it would break things
+    def _update_pc_internal_data(self, data):
+        # Update the collection
+        for param in data[0].keys():
+            if param not in self.__collection.keys():
+                self.__collection[param] = data[0][param]
+        
+        # Update the symbol map
+        for param in data[1].keys():
+            if param not in self.__symbol_map.keys():
+                self.__symbol_map[param] = data[1][param]
+        
+        # Update the parameterisations
+        #for param in data[2].keys():
+        #    if param not in self.__parameterisation.keys():
+        #        self.__parameterisation[param] = data[2][param]
+        
+        # Ok to just copy these for current use case
+        self.__parameterisation = data[2]
+        self.__parameterisation_graph = data[3]
+    
     def _update_parameterisations(self):
         
         checked_nodes = set()
@@ -1127,14 +1220,19 @@ class ParamCollection:
         for name in names:
             params = self.__parameterisation[name]
             subs = self.getSymbolValues(*params['parameters'])
-            self.__collection[name].setValue(float(params['expression'].subs(subs)))
+            #print(params['expression'])
+            #print(subs)
+            #print(params['expression'].subs(subs))
+            synum = params['expression'].subs(subs)
+            num = float(synum)
+            self.__collection[name].setValue(num)
             checked_nodes.add(name)
         if checked_nodes == all_nodes:
             #print("All nodes checked")
             return
         
         # Now we need to iterate until all nodes are accounted for
-        while checked_edges != all_edges and not self.allParametersSet():
+        while checked_edges != all_edges:# and not self.allParametersSet():
             # Get the next set of names to check
             new_names = []
             for name in names:
@@ -1146,7 +1244,12 @@ class ParamCollection:
             for name in new_names:
                 params = self.__parameterisation[name]
                 subs = self.getSymbolValues(*params['parameters'])
-                self.__collection[name].setValue(float(params['expression'].subs(subs)))
+                #print(params['expression'])
+                #print(subs)
+                #print(params['expression'].subs(subs))
+                synum = params['expression'].subs(subs)
+                num = float(synum)
+                self.__collection[name].setValue(num)
             
             names = new_names.copy()
         

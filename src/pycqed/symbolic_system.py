@@ -12,7 +12,7 @@ class SymbolicSystem(ParamCollection):
     # Mapping of the DoF structures
     __dof_map = {'flux':0,'charge':1,'disp':2,'disp_adj':3}
     
-    def __init__(self, graph, dof_prefixes=["\\Phi", "\\phi", "Q", "q"]):
+    def __init__(self, graph, dof_prefixes=["\\Phi", "\\phi", "Q", "q"], mode_transform=False, quiet=False):
         """
         """
         
@@ -23,6 +23,9 @@ class SymbolicSystem(ParamCollection):
         self.CG = graph
         if 0 not in self.CG.circuit_graph.nodes:
             raise Exception("CircuitGraph instance must include the ground node as 0.")
+        
+        # Transform the mode coordinates?
+        self.use_transform = mode_transform
         
         # Get useful data before hand for efficiency
         self.Nn = len(self.CG.circuit_graph.nodes)-1 # Don't count the ground node
@@ -61,10 +64,6 @@ class SymbolicSystem(ParamCollection):
         self.flux_bias_names = {}
         self.charge_bias_names = {}
         
-        # Populate the degrees of freedom
-        self._add_node_dofs()
-        self._add_branch_dofs()
-        
         # Create the circuit parameters
         self._create_circuit_symbols()
         self._create_flux_bias_symbols()
@@ -75,32 +74,46 @@ class SymbolicSystem(ParamCollection):
             self._create_resonator_terms()
             self._create_loaded_resonator_parameters()
         
-        # Get transformation matrices
+        # Get representation transformation matrices
         self._get_topology_matrices()
-    
-    #
-    # PARAMETERS
-    #
-    def getParameterDict(self):
-        ret = self.circuit_params.copy()
-        ret.update(dict([(k,self.flux_bias[v]) for k,v in self.flux_bias_names.items()]))
-        ret.update(dict([(k,self.charge_bias[v]) for k,v in self.charge_bias_names.items()]))
-        return ret
-    
-    def getDoFSymbol(self, pos, dof_type):
-        index = self.__dof_map[dof_type]
-        return self.node_dofs[pos][index]
-    
-    def getDoFSymbolAsMatrix(self, pos, dof_type, n):
-        return sy.MatrixSymbol(self.getDoFSymbol(pos, dof_type), n, n)
-    
-    def getDoFSymbolList(self, dof_type):
-        return {node: self.getDoFSymbol(node, dof_type) for node in self.nodes}
+        
+        # Get coordinate transformation matrices
+        self._create_coordinate_transforms()
+        if not quiet:
+            print("Optimal basis representations for the circuit coordinates:")
+            print(self.coordinate_modes)
+        
+        # Populate the degrees of freedom
+        self._create_node_dofs()
+        self._add_branch_dofs()
     
     #
     # TRANSFORM
     #
-    
+    def setTransform(self, V):
+        # We require the transform for the flux coordinates in np.matrix format
+        self.R = sy.Matrix(V)
+        self.RT = self.R.T
+        self.Rinv = self.R**(-1)
+        self.RinvT = self.Rinv.T
+        
+        # Get the raw Linv
+        self.use_transform = False
+        Linv = self.getInverseInductanceMatrix()
+        self.use_transform = True
+        
+        # Update the coordinate modes
+        M = self.RinvT*Linv*self.Rinv
+        for i in range(M.shape[0]):
+            if M[i, i] != 0:
+                self.coordinate_modes[self.nodes[i]] = "oscillator"
+            else:
+                self.coordinate_modes[self.nodes[i]] = "charge"
+        print("Optimal basis representations for the circuit coordinates:")
+        print(self.coordinate_modes)
+        
+        # Update the node DoFs
+        self._create_node_dofs()
     
     #
     # CHARGE
@@ -122,7 +135,9 @@ class SymbolicSystem(ParamCollection):
             # Implement this when loop charges are implemented
         return sy.Matrix(bias_vec)
     
-    def getCapacitanceMatrix(self):
+    def getCapacitanceMatrix(self, parameterise=True):
+        # WARN: Should be called only once in the parent class
+        # First construct the matrix in the 'circuit basis'
         M = sy.eye(self.Nn) - sy.eye(self.Nn)
         
         # Diagonal
@@ -159,18 +174,54 @@ class SymbolicSystem(ParamCollection):
                 M[i, j] -= self.circuit_params[cstr]
                 M[j, i] -= self.circuit_params[cstr]
         
-        # FIXME: Parameterisations of the matrix elements here will likely lead to significant performance boost when inverting
+        if not parameterise:
+            return M
+        
+        # Parameterise the matrix elements
+        for i in range(M.shape[0]):
+            for j in range(i, M.shape[1]):
+                if M[i, j] == 0 or len(M[i, j].free_symbols) < 2:
+                    continue
+                
+                name = "C%i%i" % (i, j)
+                self.addParameter(name)
+                self.addParameterisation(name, M[i, j])
+                M[i, j] = self.getSymbol(name)
+                M[j, i] = self.getSymbol(name)
         
         return M
     
-    def getInverseCapacitanceMatrix(self):
+    def getInverseCapacitanceMatrix(self, parameterise=True):
         # Try to invert the inductance matrix as-is
-        return self.getCapacitanceMatrix()**(-1)
+        try:
+            if self.use_transform:
+                M = self.R*self.getCapacitanceMatrix(parameterise=parameterise)**(-1)*self.RT
+            else:
+                M = self.getCapacitanceMatrix(parameterise=parameterise)**(-1)
+        except Exception:
+            print("Capacitance matrix is singular, need at least one capacitor connected to every node.")
+            raise
         
-        # This should NOT be done
-        # Failing that, take the pseudo-inverse of the node capacitance matrix
-        # and transform that if required
-        #return self.getCapacitanceMatrix().pinv()
+        # Check for complex infinities
+        if M.has(sy.zoo):
+            raise Exception("Capacitance matrix is singular, need at least one capacitor connected to every node.")
+        
+        if not parameterise:
+            return M
+        
+        # Parameterise the matrix elements
+        for i in range(M.shape[0]):
+            for j in range(i, M.shape[1]):
+                if M[i, j] == 0 or len(M[i, j].free_symbols) < 2:
+                    continue
+                
+                name = "C%i%ii" % (i, j)
+                self.addParameter(name)
+                self.addParameterisation(name, M[i, j])
+                M[i, j] = self.getSymbol(name)
+                M[j, i] = self.getSymbol(name)
+        
+        return M
     
     def getSingleParticleChargingEnergies(self):
         ret = {}
@@ -218,7 +269,7 @@ class SymbolicSystem(ParamCollection):
     def getFluxBiasMatrix(self, mode="node", form="flux"):
         return sy.diag(*self.getFluxBiasVector(mode=mode, form=form))
     
-    def getInductanceMatrix(self, mode="node"):
+    def getInductanceMatrix(self, mode="node", parameterise=True):
         Mb = sy.eye(self.Nb) - sy.eye(self.Nb)
         
         # Diagonals
@@ -236,19 +287,16 @@ class SymbolicSystem(ParamCollection):
         elif mode == "branch":
             return Mb
     
-    def getInverseInductanceMatrix(self, mode="node"):
-        Mb = sy.eye(self.Nb) - sy.eye(self.Nb)
-        
-        # Diagonals
-        for i, edge in enumerate(self.edges):
-            cstr = self.CG.components_map[edge]
-            if cstr[0] == self.CG._element_prefixes[1]:
-                Mb[i, i] = self.circuit_params[cstr]
-        
+    def getInverseInductanceMatrix(self, mode="node", parameterise=True):
         # Off-diagonals
-        
+        Mb = self.getInductanceMatrix(mode="branch", parameterise=parameterise)
         
         # Take the pseudo-inverse of the branch inductance matrix
+        if self.use_transform:
+            if mode == "node":
+                return self.RinvT*self.Rbn*Mb.pinv()*self.Rnb*self.Rinv
+            elif mode == "branch":
+                return self.Rnb*self.RinvT*self.Rbn*Mb.pinv()*self.Rnb*self.Rinv*self.Rbn
         if mode == "node":
             return self.Rbn*Mb.pinv()*self.Rnb
         elif mode == "branch":
@@ -272,58 +320,6 @@ class SymbolicSystem(ParamCollection):
             ret[edge] = self.phi0*Jvec[i]/(2*self.pi)
         return ret
     
-    def getLeftDecompFluxVector(self):
-        return (self.Rnb + np.abs(self.Rnb))*self.getFluxVector()/2
-    
-    def getRightDecompFluxVector(self):
-        return (self.Rnb - np.abs(self.Rnb))*self.getFluxVector()/2
-    
-    def getLeftDisplacementOpMatrix(self, adjoint=False, as_vec=False):
-        vec = list(np.zeros(self.Nb))
-        ind2 = 2 if not adjoint else 3
-        ind1 = 3 if not adjoint else 2
-
-        # Use left decomposed flux vector
-        lv = self.getLeftDecompFluxVector()
-        rv = self.getRightDecompFluxVector()
-        for i, edge in enumerate(self.edges):
-            l = lv[i]
-            r = rv[i]
-            if l == 0:
-                vec[i] = 1
-            else:
-                if r.args != ():
-                    if l.args[0] == 1 and r.args[0] == -1:
-                        vec[i] = self.node_dofs[edge[0]][ind2]
-                else:
-                    vec[i] = self.node_dofs[edge[0]][ind2]
-        if as_vec:
-            return sy.Matrix(vec)
-        else:
-            return sy.diag(*vec)
-    
-    def getRightDisplacementOpVector(self, adjoint=False):
-        vec = list(np.zeros(self.Nb))
-        ind2 = 2 if not adjoint else 3
-        ind1 = 3 if not adjoint else 2
-
-
-        # Use right decomposed flux vector
-        lv = self.getLeftDecompFluxVector()
-        rv = self.getRightDecompFluxVector()
-        for i, edge in enumerate(self.edges):
-            l = lv[i]
-            r = rv[i]
-            if r == 0:
-                vec[i] = 1
-            else:
-                if l.args != ():
-                    if l.args[0] == 1 and r.args[0] == -1:
-                        vec[i] = self.node_dofs[edge[1]][ind1]
-                else:
-                    vec[i] = self.node_dofs[edge[1]][ind2]
-        return sy.Matrix(vec)
-    
     def getClassicalJosephsonEnergies(self,mode="node",sym_lev="lowest",as_equ=False):
         Jvec = self.getJosephsonVector().transpose()
         Jf = self.getRedFluxVector(mode="branch") + \
@@ -332,14 +328,60 @@ class SymbolicSystem(ParamCollection):
         return -Jvec*Jcos
     
     def getQuantumJosephsonEnergies(self):
-        Dl = self.getLeftDisplacementOpMatrix()
-        Dld = self.getLeftDisplacementOpMatrix(adjoint=True)
-        Dr = self.getRightDisplacementOpVector()
-        Drd = self.getRightDisplacementOpVector(adjoint=True)
-        pb = self.getFluxBiasMatrix(mode="branch", form="expphase")
-        pbd = self.getFluxBiasMatrix(mode="branch", form="expphase").conjugate()
-        J = self.getJosephsonVector().transpose()
-        return -J*0.5*(pb*Dl*Dr + pbd*Dld*Drd)
+        # Get Josephson energies
+        Jvec = self.getJosephsonVector()
+        
+        # Create the transformed branch vector
+        Pp = self.Rnb*self.Rinv*self.node_vector
+        
+        # Create the exponential bias terms
+        Pbias = self.getFluxBiasVector(mode="branch", form="phase")
+        Pexp_p = sy.Matrix([sy.exp(1j*Pbias[i]) for i in range(self.Nb)])
+        Pexp_m = sy.Matrix([sy.exp(-1j*Pbias[i]) for i in range(self.Nb)])
+        
+        # Construct the cosine terms in terms of displacement operators
+        ret = 0
+        for i, edge in enumerate(self.edges):
+            if Jvec[i] == 0:
+                continue
+            
+            prod1 = Pexp_p[i]
+            prod2 = Pexp_m[i]
+            if len(Pp[i].atoms()) > 2: # Case where there is sum of elements
+                
+                # Left
+                for arg in Pp[i].args:
+                    if arg.args[0] > 0:
+                        prod1 *= self.disp_vector[arg.args[1]]
+                    else:
+                        prod1 *= self.disp_adj_vector[arg.args[1]]
+                
+                # Right
+                for arg in Pp[i].args:
+                    if arg.args[0] < 0:
+                        prod2 *= self.disp_vector[arg.args[1]]
+                    else:
+                        prod2 *= self.disp_adj_vector[arg.args[1]]
+            else: # Case where there is a single element
+                if Pp[i].args[0] > 0:
+                    prod1 *= self.disp_vector[Pp[i].args[1]]
+                    prod2 *= self.disp_adj_vector[Pp[i].args[1]]
+                else:
+                    prod1 *= self.disp_adj_vector[Pp[i].args[1]]
+                    prod2 *= self.disp_vector[Pp[i].args[1]]
+        
+            ret += -0.5*Jvec[i]*(prod1 + prod2)
+        
+        return sy.Matrix([ret])
+        
+        #Dl = self.getLeftDisplacementOpMatrix()
+        #Dld = self.getLeftDisplacementOpMatrix(adjoint=True)
+        #Dr = self.getRightDisplacementOpVector()
+        #Drd = self.getRightDisplacementOpVector(adjoint=True)
+        #pb = self.getFluxBiasMatrix(mode="branch", form="expphase")
+        #pbd = self.getFluxBiasMatrix(mode="branch", form="expphase").conjugate()
+        #J = self.getJosephsonVector().transpose()
+        #return -J*0.5*(pb*Dl*Dr + pbd*Dld*Drd)
     
     #
     # PHASESLIP NANOWIRES
@@ -374,7 +416,15 @@ class SymbolicSystem(ParamCollection):
     #
     # INTERNAL
     #
-    def _add_node_dofs(self):
+    def _create_node_dofs(self):
+        
+        # Create node vector
+        self.node_vector = sy.Matrix([sy.symbols("n_{%i}" % n) for n in self.nodes])
+        self.node_map = {n: self.node_vector[i] for i, n in enumerate(self.nodes)}
+        self.node_map_rev = {v: k for k, v in self.node_map.items()}
+        #self.mode_vector = sy.Matrix([sy.symbols("m_{%i}" % n) for n in self.coordinate_modes.keys()])
+        
+        # Create mode vector
         self.node_dofs = {}
         self.classical_node_dofs = {}
         for node in self.CG.sc_spanning_tree_wc.nodes:
@@ -393,6 +443,20 @@ class SymbolicSystem(ParamCollection):
                         self.redflux_prefix, node,
                         self.charge_prefix, node
                     ))
+        
+        # Get displacement operator maps
+        self.disp_vector = {self.node_vector[i]: self.node_dofs[n][2] for i, n in enumerate(self.nodes)}
+        self.disp_adj_vector = {self.node_vector[i]: self.node_dofs[n][3] for i, n in enumerate(self.nodes)}
+        
+        # Get displacement operator partial charges resulting from mode transformation
+        #Qp = self.RinvT * self.getChargeVector()
+        Qp = self.R * self.getFluxVector()
+        self.cooper_disp = {}
+        for i, node in enumerate(self.nodes):
+            if len(Qp[i].atoms()) > 2: # Case where there is sum of elements
+                self.cooper_disp[node] = abs(float(Qp[i].args[0].args[0]))
+            else: # Case where there is a single element
+                self.cooper_disp[node] = abs(float(Qp[i].args[0]))
     
     # FIXME: Is this still required?
     def _add_branch_dofs(self):
@@ -417,6 +481,16 @@ class SymbolicSystem(ParamCollection):
     
     def _add_loop_dofs(self):
         pass
+    
+    def _get_topology_matrices(self):
+        # nx incidence matrix is Nn rows by Nb columns
+        I = np.array(nx.incidence_matrix(self.CG.sc_spanning_tree_wc, oriented=True).todense()*-1)
+        
+        # Remove the row that corresponds to the ground node
+        nodes = list(self.CG.sc_spanning_tree_wc.nodes)
+        i = nodes.index(0)
+        self.Rbn = sy.Matrix(np.delete(I, (i), axis=0)) # Branch to node
+        self.Rnb = self.Rbn.T # Node to branch
     
     def _create_circuit_symbols(self):
         
@@ -478,16 +552,24 @@ class SymbolicSystem(ParamCollection):
         coupled_indices = {node: (nodes.index(n[0]), nodes.index(n[1])) for node, n in coupled_nodes.items()}
         
         # Get the new system matrices
-        SS = SymbolicSystem(CG)
+        SS = SymbolicSystem(CG, quiet=True)
         Cinv = SS.getInverseCapacitanceMatrix()
         Linv = SS.getInverseInductanceMatrix()
         
         # Get the coupling terms
         for node, indices in coupled_indices.items():
+            
+            # Get the matrix elements
             i, j = indices
-            frd = sy.sqrt(Cinv[j, j]*Linv[j, j])
-            Zrd = sy.sqrt(Cinv[j, j]/Linv[j, j])
-            gC = Cinv[i, j]/sy.sqrt(2*Zrd)
+            
+            # Construct the resonator terms
+            Ci_jj = SS.getParametricExpression(SS.getParameterFromSymbol(Cinv[j, j]), expand=True)
+            Ci_ij = SS.getParametricExpression(SS.getParameterFromSymbol(Cinv[i, j]), expand=True)
+            Li_jj = Linv[j, j]#SS.getParametricExpression(SS.getParameterFromSymbol(Linv[j, j]), expand=True)
+            #Li_ij = SS.getParametricExpression(SS.getParameterFromSymbol(Linv[i, j]), expand=True)
+            frd = sy.sqrt(Ci_jj * Li_jj)
+            Zrd = sy.sqrt(Ci_jj / Li_jj)
+            gC = Ci_ij / sy.sqrt(2*Zrd)
             self.resonator_symbols_expr[node] = {
                 "gC": gC,
                 "frl": frd,
@@ -508,36 +590,70 @@ class SymbolicSystem(ParamCollection):
             
             # Get the coupling term
             self.addParameterisation(self.CG.resonators_cap[node]["gC"], gC)
-            
-    
-    def _get_topology_matrices(self):
-        # nx incidence matrix is Nn rows by Nb columns
-        I = np.array(nx.incidence_matrix(self.CG.sc_spanning_tree_wc, oriented=True).todense()*-1)
-        
-        # Remove the row that corresponds to the ground node
-        nodes = list(self.CG.sc_spanning_tree_wc.nodes)
-        i = nodes.index(0)
-        self.Rbn = sy.Matrix(np.delete(I, (i), axis=0)) # Branch to node
-        self.Rnb = self.Rbn.T # Node to branch
     
     def _create_flux_bias_symbols(self):
+        
+        # First add empty flux bias placeholders
         for edge in self.edges:
             self.flux_bias_prefactor[edge] = 1.0
             self.flux_bias[edge] = 0.0
             self.red_flux_bias[edge] = 0.0
             self.exp_flux_bias[edge] = 1.0
-            
+        
+        # Now update the flux bias
+        for edge in self.edges:
             if edge in self.CG.closure_branches or (edge[1], edge[0], edge[2]) in self.CG.closure_branches:
-                self.flux_bias[edge] = sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                
-                self.flux_bias_names["phi%i%i-%ie"%edge] = edge
-                self.red_flux_bias[edge] = sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                self.exp_flux_bias[edge] = sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                
-                self.addParameter(
-                    "phi%i%i-%ie" % edge,
-                    sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                )
+                # Josephson closure branches can take the bias term.
+                if self.CG.isJosephsonEdge(edge):
+                    self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                    
+                    self.flux_bias_names["phi%i%i-%ie"%edge] = edge
+                    self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                    self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                    
+                    self.addParameter(
+                        "phi%i%i-%ie" % edge,
+                        sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                    )
+                # Inductive closure branches cannot take the bias term if in either the oscillator or charges bases.
+                elif self.CG.isInductiveEdge(edge):
+                    
+                    # Find the current loop
+                    loop_keys = self.CG.getLoopsFromClosureBranch(edge)
+                    this_loop = None
+                    for k in loop_keys:
+                        if edge in self.CG.sc_loops[k] or (edge[1], edge[0], edge[2]) in self.CG.sc_loops[k]:
+                            this_loop = k
+                            break
+                    
+                    if this_loop is None:
+                        raise Exception("No superconducting loop found for closure branch %s. This should never happen so there must be a bug." % repr(edge))
+                    
+                    # Just find the first edge that has a JJ and use that for the bias
+                    shared_edges = self.CG.getEdgesSharedWithLoop(this_loop)
+                    found = False
+                    for le in shared_edges:
+                        if self.CG.isJosephsonEdge(le):
+                            found = True
+                            break
+                    
+                    if not found:
+                        raise Exception("No JJs found in loop %i for scalar flux bias term. Need the flux basis to put the bias on an inductor. (Not implemented)" % this_loop)
+                    
+                    # Reverse the edge if required
+                    le = (le[1], le[0], le[2]) if le not in self.edges else le
+                    
+                    # Add the terms
+                    self.flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                    
+                    self.flux_bias_names["phi%i%i-%ie"%le] = le
+                    self.red_flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                    self.exp_flux_bias[le] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                    
+                    self.addParameter(
+                        "phi%i%i-%ie" % edge,
+                        sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                    )
     
     def _create_charge_bias_symbols(self):
         for node in self.nodes:
@@ -553,8 +669,73 @@ class SymbolicSystem(ParamCollection):
                 )
         
         #    self.red_charge_bias[edge] = 1.0
-
-
+    
+    def _create_coordinate_transforms(self):
+        self.coordinate_modes = {}
+        
+        # Find oscillator modes
+        if self.use_transform:
+            # Get the inverse inductance matrix in node representation
+            self.use_transform = False
+            Linv = self.getInverseInductanceMatrix()
+            self.use_transform = True
+            
+            # Get the transformation matrices
+            V, D = Linv.diagonalize()
+            if V.free_symbols != set():
+                print("Warning: A suitable transformation couldn't be identified automatically. Set one manually using the setTransform function.")
+                self.use_transform = False
+                self._create_coordinate_transforms()
+                return
+            
+            self.R = V
+            self.RT = V.T
+            self.Rinv = V**(-1)
+            self.RinvT = self.Rinv.T
+            
+            # Update the coordinate modes
+            M = self.RinvT*Linv*self.Rinv
+            for i in range(M.shape[0]):
+                if M[i, i] != 0:
+                    self.coordinate_modes[self.nodes[i]] = "oscillator"
+                else:
+                    self.coordinate_modes[self.nodes[i]] = "charge"
+        else:
+            Linv = self.getInverseInductanceMatrix()
+            
+            # Create the identity transforms
+            M = sy.Matrix(np.diag([1.0]*Linv.shape[0]))
+            self.R = M
+            self.RT = M
+            self.Rinv = M
+            self.RinvT = M
+            
+            all_indices = set(range(Linv.shape[0]))
+            ch_indices = set()
+            index = 0
+            while ch_indices != all_indices:
+                if Linv[index, index] == 0:
+                    self.coordinate_modes[self.nodes[index]] = "charge"
+                    ch_indices.add(index)
+                    index += 1
+                    continue
+                
+                # Check the row
+                # FIXME: This is too harsh: block diagonal matrices are actually acceptable
+                # as couplings between oscillator modes are allowed.
+                coupled = False
+                for i in range(index+1, Linv.shape[0]):
+                    if Linv[index, i] != 0:
+                        coupled = True
+                        self.coordinate_modes[self.nodes[i]] = "charge"
+                        ch_indices.add(i)
+                if coupled:
+                    self.coordinate_modes[self.nodes[index]] = "charge"
+                else:
+                    self.coordinate_modes[self.nodes[index]] = "oscillator"
+                ch_indices.add(index)
+                index += 1
+                
 
 
 

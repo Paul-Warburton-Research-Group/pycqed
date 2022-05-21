@@ -234,6 +234,31 @@ class CircuitGraph:
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         return edges_map[component]
     
+    def getLoopsFromClosureBranch(self, edge):
+        if edge not in self.closure_branches:
+            raise Exception("Edge %s not a closure branch." % repr(edge))
+        
+        loop_keys = []
+        for key, loop_edges in self.sc_loops.items():
+            if edge in loop_edges:
+                loop_keys.append(key)
+        return loop_keys
+    
+    def getEdgesSharedWithLoop(self, loop_key):
+        if loop_key not in self.sc_loops.keys():
+            raise Exception("No loop key %i available." % loop_key)
+        
+        # Get the loops connected to this loop and save their edges
+        loop_edges = set(self.sc_loops[loop_key])
+        edges = set(self.sc_loops[loop_key])
+        for key, loop in self.sc_loops.items():
+            if key == loop_key:
+                continue
+            
+            if not loop_edges.isdisjoint(set(loop)):
+                edges |= set(loop)
+        return edges
+    
     #
     # DRAWING
     #
