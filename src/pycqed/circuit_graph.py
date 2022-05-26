@@ -38,12 +38,6 @@ class CircuitGraph:
         """
         """
         
-        # Circuit controls
-        self.controls = []
-        
-        # All circuit parameters (components + controls)
-        self.parameters = []
-        
         # Components associated with each branch
         self.components_map = {}
         
@@ -61,6 +55,9 @@ class CircuitGraph:
         
         # Capacitively-coupled resonators
         self.resonators_cap = {}
+        
+        # Mutually coupled branches
+        self.coupled_branches = {}
         
         # General undirected circuit graph
         self.circuit_graph = nx.MultiGraph(circuit_name=circuit_name)
@@ -88,7 +85,28 @@ class CircuitGraph:
     def coupleBranchesInductively(self, edge1, edge2, component):
         """
         """
-        pass
+        alt_edge1 = (edge1[1], edge1[0], edge1[2])
+        alt_edge2 = (edge2[1], edge2[0], edge2[2])
+        
+        if edge1 not in self.sc_spanning_tree_wc.edges and alt_edge1 not in self.sc_spanning_tree_wc.edges:
+            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge1))
+        if edge2 not in self.sc_spanning_tree_wc.edges and alt_edge2 not in self.sc_spanning_tree_wc.edges:
+            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge2))
+        
+        edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
+        edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
+        
+        # Check the edges are inductive
+        if self.isInductiveEdge(edge1) == False:
+            raise Exception("The selected edge %s is not inductive." % repr(edge1))
+        if self.isInductiveEdge(edge2) == False:
+            raise Exception("The selected edge %s is not inductive." % repr(edge2))
+        
+        # Ensure component is a mutual inductance
+        if component[0] != self._element_prefixes[4]:
+            raise Exception("Branch coupling component must be a mutual inductance.")
+        
+        self.coupled_branches[component] = (edge1, edge2)
     
     def coupleResonatorCapacitively(self, node, component):
         """
@@ -147,17 +165,40 @@ class CircuitGraph:
         """
         pass
     
-    def addFluxBias(self, edge, component):
+    def addFluxBias(self, edge, component, source_inductance=None):
         """
         """
+        alt_edge = (edge[1], edge[0], edge[2])
+        if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
+            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge))
+        edge = alt_edge if edge not in self.sc_spanning_tree_wc.edges else edge
+        
+        # Ensure component is a mutual inductance
+        if component[0] != self._element_prefixes[4]:
+            raise Exception("Flux bias coupling component must be a mutual inductance.")
+        
+        # Detect duplicates
+        if component in self.components_map.values():
+            raise Exception("Component %s already exists. Change the name of the component." % component)
+        
+        # Check the edge has an inductor
+        if self.isInductiveEdge(edge) == False:
+            raise Exception("The selected edge %s is not inductive." % repr(edge))
+        
+        # Save it
         self.flux_bias_edges[edge] = component
-        self.flux_bias_edges[(edge[1], edge[0], edge[2])] = component
+        
+        # FIXME: For now we assume the source inductance is the same as the in-circuit inductance.
     
     def addChargeBias(self, node, component):
         """
         """
         if node not in self.circuit_graph.nodes:
             raise Exception("Node %i not part of the circuit graph." % node)
+        
+        # Ensure component is a capacitor
+        if component[0] != self._element_prefixes[0]:
+            raise Exception("Charge bias coupling component must be a capacitor.")
         
         # Detect duplicates
         if component in self.components_map.values():
