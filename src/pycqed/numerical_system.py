@@ -158,9 +158,12 @@ class NumericalSystem(ds.TempData):
         P = None
         D = None
         Ddag = None
+        S = None
+        Sdag = None
         trunc = self.operator_data[node]["truncation"]
         basis = self.operator_data[node]["basis"]
         #impedance = self.operator_data[node]["impedance"]
+        # FIXME: Determine if we need to generate all the operators for this node
         
         if basis == "charge":
             # For IJ modes the charge states are the eigenvectors of the following matrix
@@ -185,7 +188,7 @@ class NumericalSystem(ds.TempData):
             # Get a simple charge number operator
             Q = -qt.num(2*trunc + 1)+float(trunc)
             
-            # Generate displacement operators by first diagonalising the flux operator
+            # Generate Josephson displacement operators by first diagonalising the flux operator
             E, V = np.linalg.eigh(P.data.todense())
             
             # Create transformation matrices
@@ -195,6 +198,10 @@ class NumericalSystem(ds.TempData):
             # Exponentiate the diagonal matrix
             D = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
             Ddag = D.dag()
+            
+            # Generate Phase Slip displacement operators by just exponentiating the charge operator, which is diagonal already in this case
+            S = qt.Qobj(np.diag(np.exp(-2j*np.pi*q)))
+            Sdag = S.dag()
             
         elif basis == "oscillator":
             
@@ -210,15 +217,17 @@ class NumericalSystem(ds.TempData):
             i = self.getNodeIndex(node)
             osc_impedance = self.getParameterValue("Zosc%i" % node)*self.units.getPrefactor("Impe")
             
-            # Get the prefactor that results from transformation (the charge increment prefactor)
+            # Get the prefactors that results from transformation (the charge and fluxon increment prefactors)
             a = self.SS.cooper_disp[node]
+            b = self.SS.fluxon_disp[node]
             
             # Using oscillator basis
             Q = 1j*np.sqrt(1/(2*osc_impedance))*(qt.create(trunc) - qt.destroy(trunc))*self.units.getPrefactor("ChgOsc")
             P = np.sqrt(osc_impedance/2)*(qt.create(trunc) + qt.destroy(trunc))*self.units.getPrefactor("FlxOsc")
             Pp = a*2*np.pi/pc.phi0*np.sqrt(pc.hbar)*P/self.units.getPrefactor("FlxOsc")
+            Qp = b*np.pi/pc.e*np.sqrt(pc.hbar)*Q/self.units.getPrefactor("ChgOsc")
             
-            # Generate displacement operators by first diagonalising the flux operator
+            # Generate Josephson displacement operators by first diagonalising the flux operator
             E, V = np.linalg.eigh(Pp.data.todense())
             
             # Create transformation matrices
@@ -228,6 +237,17 @@ class NumericalSystem(ds.TempData):
             # Exponentiate the diagonal matrix
             D = U*qt.Qobj(np.diag(np.exp(1j*E)))*Uinv
             Ddag = D.dag()
+            
+            # Generate Phase Slip displacement operators by first diagonalising the charge operator
+            E, V = np.linalg.eigh(Qp.data.todense())
+            
+            # Create transformation matrices
+            U = qt.Qobj(V)
+            Uinv = qt.Qobj(np.linalg.inv(V))
+            
+            # Exponentiate the diagonal matrix
+            S = U*qt.Qobj(np.diag(np.exp(1j*E)))*Uinv
+            Sdag = S.dag()
         elif basis == "flux":
             # Flux operator is based on a flux grid
             pmax = self.operator_data[node]["flux_max"]
@@ -254,7 +274,7 @@ class NumericalSystem(ds.TempData):
             
             Q = Q/(grid[1]-grid[0])
             
-            # Generate displacement operators by first diagonalising the flux operator
+            # Generate Josephson displacement operators by first diagonalising the flux operator
             E, V = np.linalg.eigh(P.data.todense())
             
             # Create transformation matrices
@@ -265,7 +285,18 @@ class NumericalSystem(ds.TempData):
             D = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
             Ddag = D.dag()
             
-        return Q, P, D, Ddag
+            # Generate Phase displacement operators by first diagonalising the charge operator
+            E, V = np.linalg.eigh(Q.data.todense())
+            
+            # Create transformation matrices
+            U = qt.Qobj(V)
+            Uinv = qt.Qobj(np.linalg.inv(V))
+            
+            # Exponentiate the diagonal matrix
+            S = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
+            Sdag = S.dag()
+            
+        return Q, P, D, Ddag, S, Sdag
     
     ## Expand operator Hilbert spaces and update mapping to associated symbols
     def getExpandedOperatorsMap(self, nodes=None):
@@ -299,7 +330,7 @@ class NumericalSystem(ds.TempData):
             op_dict = {}
             trunc = self.operator_data[node]["truncation"]
             basis = self.operator_data[node]["basis"]
-            Q, P, D, Ddag = self.getOperatorList(node)
+            Q, P, D, Ddag, S, Sdag = self.getOperatorList(node)
             
             # Indices minus the current index
             indices = list(range(len(node_list)))
@@ -325,6 +356,16 @@ class NumericalSystem(ds.TempData):
             for j in indices:
                 Olist[j] = Ilist[j]
             op_dict["disp_adj"] = qt.tensor(Olist)
+            
+            Olist[i] = S
+            for j in indices:
+                Olist[j] = Ilist[j]
+            op_dict["pdisp"] = qt.tensor(Olist)
+            
+            Olist[i] = Sdag
+            for j in indices:
+                Olist[j] = Ilist[j]
+            op_dict["pdisp_adj"] = qt.tensor(Olist)
             
             self.circ_operators[node] = op_dict.copy()
     
@@ -365,9 +406,12 @@ class NumericalSystem(ds.TempData):
         
         # Symbolic expressions independent of a coupled subsystem
         self.Jvec = self.SS.getJosephsonVector()
+        self.Pvec = self.SS.getPhaseSlipVector()
         self.Qb = self.SS.getChargeBiasVector()
+        self.Qbt = self.SS.Rnb*self.SS.getChargeBiasVector()
         self.Pb = self.SS.getFluxBiasVector(mode="branch")
         self.Pbm = self.SS.getFluxBiasMatrix(mode="branch")
+        self.Pbi = self.SS.getFluxBiasVectorInd()
         
         # Basis representation prefactors
         #self.Zpref = self.getBasisPrefactors()
@@ -389,25 +433,32 @@ class NumericalSystem(ds.TempData):
         self.Cinvnp = np.asmatrix(self.Cinv.subs(subs), dtype=np.float64)
         self.Linvnp = np.asmatrix(self.Linv.subs(subs), dtype=np.float64)
         self.Jvecnp = np.asarray(self.Jvec.subs(subs), dtype=np.float64)[:, 0]
+        self.Pvecnp = np.asarray(self.Pvec.subs(subs), dtype=np.float64)[:, 0]
         
         # Substitute external biases
         self.Qbnp = np.asmatrix(self.Qb.subs(subs), dtype=np.float64) # x 2e
+        self.Qbtnp = np.asmatrix(self.Qbt.subs(subs), dtype=np.float64) # x 2e
         self.Pbsm = np.asmatrix(self.Pbm.subs(subs), dtype=np.float64)
         self.Pbnp = np.asmatrix(self.Pb.subs(subs), dtype=np.float64) # x Phi0
+        self.Pbinp = np.asmatrix(self.Pbi.subs(subs), dtype=np.float64)
         
-        # Generate exponentiated biases
+        # Generate exponentiated flux biases
         Pexp1 = []
         Pexp2 = []
         for i in range(self.Pbsm.shape[0]):
             Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
             Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
-        self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
-        self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
         self.Pexp_pnp = Pexp1
         self.Pexp_mnp = Pexp2
         
-        # Generate basis representation prefactors
-        #self.Zprefnp = np.asmatrix(self.Zpref.subs(subs), dtype=np.float64)
+        # Generate exponentiated charge biases
+        Qexp1 = []
+        Qexp2 = []
+        for i in range(self.Qbtnp.shape[0]):
+            Qexp1.append(np.exp(2j*np.pi*self.Qbtnp[i, 0]))
+            Qexp2.append(np.exp(-2j*np.pi*self.Qbtnp[i, 0]))
+        self.Qexp_pnp = Qexp1
+        self.Qexp_mnp = Qexp2
         
         # Get branch inverse inductance matrix for branch current calculations
         self.Linvnp_b = np.asmatrix(self.Linv_b.subs(subs), dtype=np.float64)
@@ -424,11 +475,11 @@ class NumericalSystem(ds.TempData):
         self.Linv_b_pre = self.SS.getInverseInductanceMatrix(mode='branch').subs(subs)
         
         self.Jvec_pre = self.SS.getJosephsonVector().subs(subs)
+        self.Pvec_pre = self.SS.getPhaseSlipVector().subs(subs)
         self.Qb_pre = self.SS.getChargeBiasVector().subs(subs)
+        self.Qbt_pre = self.SS.Rnb*self.SS.getChargeBiasVector().subs(subs)
         self.Pbm_pre = self.SS.getFluxBiasMatrix(mode="branch").subs(subs)
-        
-        # Generate basis representation prefactors
-        #self.Zpref_pre = self.Zpref.subs(subs)
+        self.Pbi_pre = self.SS.getFluxBiasVectorInd().subs(subs)
         
         # Find which operators will need to be regenerated for each sweep
         self._get_regen_coordinate_nodes()
@@ -462,26 +513,33 @@ class NumericalSystem(ds.TempData):
         self.Cinvnp = np.asmatrix(self.Cinv_pre.subs(subs), dtype=np.float64)
         self.Linvnp = np.asmatrix(self.Linv_pre.subs(subs), dtype=np.float64)
         self.Jvecnp = np.asarray(self.Jvec_pre.subs(subs), dtype=np.float64)[:, 0]
+        self.Pvecnp = np.asarray(self.Pvec_pre.subs(subs), dtype=np.float64)[:, 0]
         self.Linvnp_b = np.asmatrix(self.Linv_b_pre.subs(subs), dtype=np.float64)
         
         # Substitute external biases
         self.Qbnp = np.asmatrix(self.Qb_pre.subs(subs), dtype=np.float64) # x 2e
+        self.Qbtnp = np.asmatrix(self.Qbt_pre.subs(subs), dtype=np.float64) # x 2e
         self.Pbsm = np.asmatrix(self.Pbm_pre.subs(subs), dtype=np.float64)
         #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs), dtype=np.float64) # x Phi0
+        self.Pbinp = np.asmatrix(self.Pbi_pre.subs(subs), dtype=np.float64)
         
-        # Generate exponentiated biases
+        # Generate exponentiated flux biases
         Pexp1 = []
         Pexp2 = []
         for i in range(self.Pbsm.shape[0]):
             Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
             Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
-        self.Pexpbnp = np.asmatrix(np.diag(Pexp1), dtype=np.complex64)
-        self.Pexpbnpc = np.asmatrix(np.diag(Pexp2), dtype=np.complex64)
         self.Pexp_pnp = Pexp1
         self.Pexp_mnp = Pexp2
         
-        # Generate basis representation prefactors
-        #self.Zprefnp = np.asmatrix(self.Zpref_pre.subs(subs), dtype=np.float64)
+        # Generate exponentiated charge biases
+        Qexp1 = []
+        Qexp2 = []
+        for i in range(self.Qbtnp.shape[0]):
+            Qexp1.append(np.exp(2j*np.pi*self.Qbtnp[i, 0]))
+            Qexp2.append(np.exp(-2j*np.pi*self.Qbtnp[i, 0]))
+        self.Qexp_pnp = Qexp1
+        self.Qexp_mnp = Qexp2
         
         # Regenerate operators if required
         if self.regen_nodes != []:
@@ -507,17 +565,13 @@ class NumericalSystem(ds.TempData):
         util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
         
         # Get flux energy
-        self.Hp = self.units.getPrefactor("El")*0.5*\
-        util.mdot(self.Pnp.T, self.Linvnp, self.Pnp)[0, 0]
+        self.Hf = self.units.getPrefactor("El")*0.5*\
+        util.mdot((self.Pnp + self.Pbinp).T, self.Linvnp, self.Pnp + self.Pbinp)[0, 0]
         
-        # Get Josephson energy
-        #self.Hj = -self.units.getPrefactor("Ej")*0.5*\
-        #(util.mdot(self.Jvecnp, self.Pexpbnpc, self.Dl_adj, self.Dr_adj) + \
-        # util.mdot(self.Jvecnp, self.Pexpbnp, self.Dl, self.Dr))
-        
-        # Create the transformed branch vector
+        # Need the branch DoFs in the possibly transformed representation
         Pp = self.SS.Rnb*self.SS.Rinv*self.SS.node_vector
         
+        # Get the Josephson energy
         self.Hj = 0
         for i, edge in enumerate(self.SS.edges):
             if self.Jvecnp[i] == 0.0:
@@ -553,8 +607,44 @@ class NumericalSystem(ds.TempData):
             self.Hj += -0.5*self.Jvecnp[i]*(prod1 + prod2)
         self.Hj *= self.units.getPrefactor("Ej")
         
+        # Get the Phaseslip energy
+        self.Hp = 0
+        for i, edge in enumerate(self.SS.edges):
+            if self.Pvecnp[i] == 0.0:
+                continue
+            
+            prod1 = self.Qexp_pnp[i]
+            prod2 = self.Qexp_mnp[i]
+            if len(Pp[i].atoms()) > 2: # Case where there is sum of elements
+                # Left
+                for arg in Pp[i].args:
+                    node = self.SS.node_map_rev[arg.args[1]]
+                    if arg.args[0] > 0:
+                        prod1 *= self.circ_operators[node]["pdisp"]
+                    else:
+                        prod1 *= self.circ_operators[node]["pdisp_adj"]
+                
+                # Right
+                for arg in Pp[i].args:
+                    node = self.SS.node_map_rev[arg.args[1]]
+                    if arg.args[0] < 0:
+                        prod2 *= self.circ_operators[node]["pdisp"]
+                    else:
+                        prod2 *= self.circ_operators[node]["pdisp_adj"]
+            else:
+                node = self.SS.node_map_rev[Pp[i].args[1]]
+                if Pp[i].args[0] > 0:
+                    prod1 *= self.circ_operators[node]["pdisp"]
+                    prod2 *= self.circ_operators[node]["pdisp_adj"]
+                else:
+                    prod1 *= self.circ_operators[node]["pdisp_adj"]
+                    prod2 *= self.circ_operators[node]["pdisp"]
+        
+            self.Hp += -0.5*self.Pvecnp[i]*(prod1 + prod2)
+        self.Hp *= self.units.getPrefactor("Ep")
+        
         # Total Hamiltonian
-        self.Ht = (self.Hq + self.Hp + self.Hj)
+        self.Ht = (self.Hq + self.Hf + self.Hj + self.Hp)
         return self.Ht
     
     def getCurrentOperator(self, edge=None):

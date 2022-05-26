@@ -130,9 +130,8 @@ class SymbolicSystem(ParamCollection):
             for i, node in enumerate(self.nodes):
                 bias_vec[i] = self.charge_bias[node]
         elif form == "phase":
-            raise Exception("Charge bias phase not implemented.")
-            
-            # Implement this when loop charges are implemented
+            for i, node in enumerate(self.nodes):
+                bias_vec[i] = self.red_charge_bias[node]
         return sy.Matrix(bias_vec)
     
     def getCapacitanceMatrix(self, parameterise=True):
@@ -250,17 +249,46 @@ class SymbolicSystem(ParamCollection):
     def getCurrentVector(self, mode="node"):
         return sy.Matrix([sy.symbols("I_{%i}" % node) for node in self.nodes])
     
+    def moveFluxBias(self, orig_edge, new_edge):
+        if orig_edge not in self.edges:
+            raise Exception("Edge %s not part of the conductive circuit subgraph." % repr(orig_edge))
+        if new_edge not in self.edges:
+            raise Exception("Edge %s not part of the conductive circuit subgraph." % repr(new_edge))
+        
+        # Check the original edge has a flux bias term
+        if self.flux_bias[orig_edge] == 0.0:
+            raise Exception("Edge %s does not contain a flux bias term." % repr(orig_edge))
+        
+        # Check both edges are part of the same loop
+        
+        
+        # FIXME: What if there are multiple bias terms on the edge?
+        expr = self.flux_bias[orig_edge]
+        self.flux_bias[orig_edge] = 0.0
+        self.flux_bias[new_edge] = expr
+        
+        expr = self.red_flux_bias[orig_edge]
+        self.red_flux_bias[orig_edge] = 0.0
+        self.red_flux_bias[new_edge] = expr
+        
+        if self.CG.isInductiveEdge(new_edge):
+            print("WARNING: Flux bias %s is on an inductive edge, and thus a suitable basis must be used." % (repr(expr)))
+        print("Flux bias term %s is on edge %s (%s)." % (repr(expr), repr(new_edge), self.CG.components_map[new_edge]))
+    
     def getFluxBiasVector(self, mode="node", form="flux"):
         bias_vec = list(np.zeros(self.Nb))
         if form == "flux":
-            for i,edge in enumerate(self.edges):
-                bias_vec[i] = self.flux_bias_prefactor[edge]*self.flux_bias[edge]
+            for i, edge in enumerate(self.edges):
+                if self.CG.isJosephsonEdge(edge):
+                    bias_vec[i] = self.flux_bias_prefactor[edge]*self.flux_bias[edge]
+                else:
+                    bias_vec[i] = 0.0
         elif form == "phase":
-            for i,edge in enumerate(self.edges):
-                bias_vec[i] = self.flux_bias_prefactor[edge]*self.red_flux_bias[edge]
-        elif form == "expphase":
-            for i,edge in enumerate(self.edges):
-                bias_vec[i] = self.exp_flux_bias[edge]
+            for i, edge in enumerate(self.edges):
+                if self.CG.isJosephsonEdge(edge):
+                    bias_vec[i] = self.flux_bias_prefactor[edge]*self.red_flux_bias[edge]
+                else:
+                    bias_vec[i] = 0.0
         if mode == "node":
             return self.Rbn * sy.Matrix(bias_vec)
         elif mode == "branch":
@@ -269,17 +297,43 @@ class SymbolicSystem(ParamCollection):
     def getFluxBiasMatrix(self, mode="node", form="flux"):
         return sy.diag(*self.getFluxBiasVector(mode=mode, form=form))
     
+    def getFluxBiasVectorInd(self, mode="node"):
+        bias_vec = list(np.zeros(self.Nb))
+        for i, edge in enumerate(self.edges):
+            if self.CG.isInductiveEdge(edge):
+                bias_vec[i] = self.flux_bias_prefactor[edge]*self.flux_bias[edge]
+            else:
+                bias_vec[i] = 0.0
+        
+        # Remove the bias terms that would appear in the JJs in the node representation
+        if mode == "node":
+            return self.Rbn * sy.Matrix(bias_vec)
+        elif mode == "branch":
+            return sy.Matrix(bias_vec)
+    
     def getInductanceMatrix(self, mode="node", parameterise=True):
         Mb = sy.eye(self.Nb) - sy.eye(self.Nb)
         
         # Diagonals
         for i, edge in enumerate(self.edges):
-            cstr = self.CG.components_map[edge]
-            if cstr[0] == self.CG._element_prefixes[1]:
-                Mb[i, i] = self.circuit_params[cstr]
+            if self.CG.flux_bias_edges[edge] is None:
+                cstr = self.CG.components_map[edge]
+                if cstr[0] == self.CG._element_prefixes[1]:
+                    Mb[i, i] = self.circuit_params[cstr]
+            else: # FIXME: Need to account for the case where the bias source inductance is not matched to the in-circuit inductance.
+                cstr = self.CG.components_map[edge]
+                if cstr[0] == self.CG._element_prefixes[1]:
+                    L = self.circuit_params[cstr]
+                    M = self.circuit_params[self.SS.flux_bias_edges[edge]]
+                    Mb[i, i] = (L**2 - M**2)/L
         
-        # Off-diagonals
-        
+        # Off-diagonals: always coupled branches
+        for component, edges in self.CG.coupled_branches.items():
+            edge1, edges2 = edges
+            i = self.edges.index(edge1)
+            j = self.edges.index(edge2)
+            Mb[i, j] = self.circuit_params[component]
+            Mb[j, i] = self.circuit_params[component]
         
         # Transform to node representation
         if mode == "node":
@@ -352,40 +406,88 @@ class SymbolicSystem(ParamCollection):
                 # Left
                 for arg in Pp[i].args:
                     if arg.args[0] > 0:
-                        prod1 *= self.disp_vector[arg.args[1]]
+                        prod1 *= self.jdisp_vector[arg.args[1]]
                     else:
-                        prod1 *= self.disp_adj_vector[arg.args[1]]
+                        prod1 *= self.jdisp_adj_vector[arg.args[1]]
                 
                 # Right
                 for arg in Pp[i].args:
                     if arg.args[0] < 0:
-                        prod2 *= self.disp_vector[arg.args[1]]
+                        prod2 *= self.jdisp_vector[arg.args[1]]
                     else:
-                        prod2 *= self.disp_adj_vector[arg.args[1]]
+                        prod2 *= self.jdisp_adj_vector[arg.args[1]]
             else: # Case where there is a single element
                 if Pp[i].args[0] > 0:
-                    prod1 *= self.disp_vector[Pp[i].args[1]]
-                    prod2 *= self.disp_adj_vector[Pp[i].args[1]]
+                    prod1 *= self.jdisp_vector[Pp[i].args[1]]
+                    prod2 *= self.jdisp_adj_vector[Pp[i].args[1]]
                 else:
-                    prod1 *= self.disp_adj_vector[Pp[i].args[1]]
-                    prod2 *= self.disp_vector[Pp[i].args[1]]
+                    prod1 *= self.jdisp_adj_vector[Pp[i].args[1]]
+                    prod2 *= self.jdisp_vector[Pp[i].args[1]]
         
             ret += -0.5*Jvec[i]*(prod1 + prod2)
         
         return sy.Matrix([ret])
-        
-        #Dl = self.getLeftDisplacementOpMatrix()
-        #Dld = self.getLeftDisplacementOpMatrix(adjoint=True)
-        #Dr = self.getRightDisplacementOpVector()
-        #Drd = self.getRightDisplacementOpVector(adjoint=True)
-        #pb = self.getFluxBiasMatrix(mode="branch", form="expphase")
-        #pbd = self.getFluxBiasMatrix(mode="branch", form="expphase").conjugate()
-        #J = self.getJosephsonVector().transpose()
-        #return -J*0.5*(pb*Dl*Dr + pbd*Dld*Drd)
     
     #
     # PHASESLIP NANOWIRES
     #
+    def getPhaseSlipVector(self):
+        vec = list(np.zeros(self.Nb))
+        for i, edge in enumerate(self.edges):
+            cstr = self.CG.components_map[edge]
+            if cstr[0] == self.CG._element_prefixes[3]:
+                vec[i] = self.circuit_params[cstr]
+        return sy.Matrix(vec)
+    
+    def getPhaseSlipEnergies(self):
+        pass
+    
+    def getQuantumPhaseSlipEnergies(self):
+        # Get PhaseSlip energies
+        Pvec = self.getPhaseSlipVector()
+        
+        # Create the transformed branch vector
+        Pp = self.Rnb*self.Rinv*self.node_vector
+        
+        # Create the exponential bias terms in branch form
+        Qbias = self.Rnb*self.getChargeBiasVector(form="phase")
+        Qexp_p = sy.Matrix([sy.exp(1j*Qbias[i]) for i in range(self.Nb)])
+        Qexp_m = sy.Matrix([sy.exp(-1j*Qbias[i]) for i in range(self.Nb)])
+        
+        # Construct the cosine terms in terms of displacement operators
+        ret = 0
+        for i, edge in enumerate(self.edges):
+            if Pvec[i] == 0:
+                continue
+            
+            prod1 = Qexp_p[i]
+            prod2 = Qexp_m[i]
+            if len(Pp[i].atoms()) > 2: # Case where there is sum of elements
+                
+                # Left
+                for arg in Pp[i].args:
+                    if arg.args[0] > 0:
+                        prod1 *= self.pdisp_vector[arg.args[1]]
+                    else:
+                        prod1 *= self.pdisp_adj_vector[arg.args[1]]
+                
+                # Right
+                for arg in Pp[i].args:
+                    if arg.args[0] < 0:
+                        prod2 *= self.pdisp_vector[arg.args[1]]
+                    else:
+                        prod2 *= self.pdisp_adj_vector[arg.args[1]]
+            else: # Case where there is a single element
+                if Pp[i].args[0] > 0:
+                    prod1 *= self.pdisp_vector[Pp[i].args[1]]
+                    prod2 *= self.pdisp_adj_vector[Pp[i].args[1]]
+                else:
+                    prod1 *= self.pdisp_adj_vector[Pp[i].args[1]]
+                    prod2 *= self.pdisp_vector[Pp[i].args[1]]
+        
+            ret += -0.5*Pvec[i]*(prod1 + prod2)
+        
+        return sy.Matrix([ret])
     
     #
     # HAMILTONIAN
@@ -398,10 +500,10 @@ class SymbolicSystem(ParamCollection):
     
     def getFluxEnergies(self):
         P = self.getFluxVector()
-        Pe = 0.0#self.getFluxBiasVector()
+        Pe = self.getFluxBiasVectorInd()
         Linv = self.getInverseInductanceMatrix()
-        #return 0.5 * (P + Pe).transpose() * Linv * (P + Pe)
-        return 0.5 * P.transpose() * Linv * P
+        return 0.5 * (P + Pe).transpose() * Linv * (P + Pe)
+        #return 0.5 * P.transpose() * Linv * P
     
     def getClassicalHamiltonian(self,mode="node",sym_lev="lowest",as_equ=False):
         return self.getChargingEnergies()\
@@ -411,7 +513,8 @@ class SymbolicSystem(ParamCollection):
     def getQuantumHamiltonian(self):
         return self.getChargingEnergies()\
         +self.getFluxEnergies()\
-        +self.getQuantumJosephsonEnergies()
+        +self.getQuantumJosephsonEnergies()\
+        +self.getQuantumPhaseSlipEnergies()
     
     #
     # INTERNAL
@@ -429,12 +532,14 @@ class SymbolicSystem(ParamCollection):
         self.classical_node_dofs = {}
         for node in self.CG.sc_spanning_tree_wc.nodes:
             self.node_dofs[node] = \
-                    sy.symbols("%s_{%i} %s_{%i} %s_{%i} %s_{%i}" % \
+                    sy.symbols("%s_{%i} %s_{%i} %s_{%i} %s_{%i} %s_{%i} %s_{%i}" % \
                     (
                         self.flux_prefix, node,
                         self.charge_prefix, node,
                         "D", node,
-                        "D^{\\dagger}", node
+                        "D^{\\dagger}", node,
+                        "S", node,
+                        "S^{\\dagger}", node
                     ), commutative=False)
             self.classical_node_dofs[node] = \
                     sy.symbols("%s_{%i} %s_{%i} %s_{%i}" % \
@@ -444,19 +549,31 @@ class SymbolicSystem(ParamCollection):
                         self.charge_prefix, node
                     ))
         
-        # Get displacement operator maps
-        self.disp_vector = {self.node_vector[i]: self.node_dofs[n][2] for i, n in enumerate(self.nodes)}
-        self.disp_adj_vector = {self.node_vector[i]: self.node_dofs[n][3] for i, n in enumerate(self.nodes)}
+        # Get Josephson displacement operator maps
+        self.jdisp_vector = {self.node_vector[i]: self.node_dofs[n][2] for i, n in enumerate(self.nodes)}
+        self.jdisp_adj_vector = {self.node_vector[i]: self.node_dofs[n][3] for i, n in enumerate(self.nodes)}
         
-        # Get displacement operator partial charges resulting from mode transformation
-        #Qp = self.RinvT * self.getChargeVector()
-        Qp = self.R * self.getFluxVector()
+        # Get Josephson displacement operator partial charges resulting from mode transformation
+        Pp = self.R * self.getFluxVector()
         self.cooper_disp = {}
         for i, node in enumerate(self.nodes):
-            if len(Qp[i].atoms()) > 2: # Case where there is sum of elements
-                self.cooper_disp[node] = abs(float(Qp[i].args[0].args[0]))
+            if len(Pp[i].atoms()) > 2: # Case where there is sum of elements
+                self.cooper_disp[node] = abs(float(Pp[i].args[0].args[0]))
             else: # Case where there is a single element
-                self.cooper_disp[node] = abs(float(Qp[i].args[0]))
+                self.cooper_disp[node] = abs(float(Pp[i].args[0]))
+        
+        # Get Phase Slip displacement operator maps
+        self.pdisp_vector = {self.node_vector[i]: self.node_dofs[n][4] for i, n in enumerate(self.nodes)}
+        self.pdisp_adj_vector = {self.node_vector[i]: self.node_dofs[n][5] for i, n in enumerate(self.nodes)}
+        
+        # Get phase-slip displacement operator partial fluxons resulting from mode transformation
+        Qp = self.RinvT * self.getChargeVector()
+        self.fluxon_disp = {}
+        for i, node in enumerate(self.nodes):
+            if len(Qp[i].atoms()) > 2: # Case where there is sum of elements
+                self.fluxon_disp[node] = abs(float(Qp[i].args[0].args[0]))
+            else: # Case where there is a single element
+                self.fluxon_disp[node] = abs(float(Qp[i].args[0]))
     
     # FIXME: Is this still required?
     def _add_branch_dofs(self):
@@ -495,14 +612,25 @@ class SymbolicSystem(ParamCollection):
     def _create_circuit_symbols(self):
         
         # Circuit components
-        self.circuit_params = {}
+        self.circuit_params = {} # FIXME: This attribute is now redundant, use the getSymbol function from parameters parent class.
         components = nx.get_edge_attributes(self.CG.circuit_graph, 'component').values()
         for component in components:
             self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
             self.addParameter(component)
         
+        # Mutually coupled branches
+        for component, edges in self.CG.coupled_branches.items():
+            self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
+            self.addParameter(component)
+        
         # Charge bias capacitors
         for component in self.CG.charge_bias_nodes.values():
+            if component is not None:
+                self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
+                self.addParameter(component)
+        
+        # Flux bias mutual inductors
+        for component in self.CG.flux_bias_edges.values():
             if component is not None:
                 self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
                 self.addParameter(component)
@@ -615,8 +743,9 @@ class SymbolicSystem(ParamCollection):
                         "phi%i%i-%ie" % edge,
                         sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
                     )
-                # Inductive closure branches cannot take the bias term if in either the oscillator or charges bases.
-                elif self.CG.isInductiveEdge(edge):
+                    print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
+                # Try to find a suitable JJ edge if the closure branch is inductive
+                elif self.CG.isInductiveEdge(edge) or self.CG.isPhaseSlipEdge(edge):
                     
                     # Find the current loop
                     loop_keys = self.CG.getLoopsFromClosureBranch(edge)
@@ -638,7 +767,33 @@ class SymbolicSystem(ParamCollection):
                             break
                     
                     if not found:
-                        raise Exception("No JJs found in loop %i for scalar flux bias term. Need the flux basis to put the bias on an inductor. (Not implemented)" % this_loop)
+                        #raise Exception("No JJs found in loop %i for scalar flux bias term. Need the flux basis to put the bias on an inductor. (Not implemented)" % this_loop)
+                        if self.CG.isPhaseSlipEdge(edge):
+                            found = False
+                            for le in shared_edges:
+                                if self.CG.isInductiveEdge(le):
+                                    found = True
+                                    break
+                            if not found:
+                                raise Exception("Cannot flux bias a loop with only phase-slip junctions, consider including the parasitic terms in series.")
+                            
+                            # FIXME: use the original edge name for the flux bias to follow convention of using the closure branch notation
+                            edge = le
+                        
+                        # Now look for an edge that is inductive
+                        
+                        self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                        self.flux_bias_names["phi%i%i-%ie"%edge] = edge
+                        self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                        self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+                        
+                        self.addParameter(
+                            "phi%i%i-%ie" % edge,
+                            sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                        )
+                        print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
+                        print("WARNING: Flux bias %s is on an inductive edge, and thus a suitable basis must be used." % ("phi%i%i-%ie" % edge))
+                        continue
                     
                     # Reverse the edge if required
                     le = (le[1], le[0], le[2]) if le not in self.edges else le
@@ -646,7 +801,7 @@ class SymbolicSystem(ParamCollection):
                     # Add the terms
                     self.flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
                     
-                    self.flux_bias_names["phi%i%i-%ie"%le] = le
+                    self.flux_bias_names["phi%i%i-%ie" % edge] = le
                     self.red_flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
                     self.exp_flux_bias[le] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
                     
@@ -654,14 +809,17 @@ class SymbolicSystem(ParamCollection):
                         "phi%i%i-%ie" % edge,
                         sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
                     )
+                    print("Flux bias term %s is on edge %s (%s)" % ("phi%i%i-%ie" % edge, repr(le), self.CG.components_map[le]))
     
     def _create_charge_bias_symbols(self):
         for node in self.nodes:
             if self.CG.charge_bias_nodes[node] is None:
                 self.charge_bias[node] = 0.0
+                self.red_charge_bias[node] = 0.0
             else:
                 self.charge_bias[node] = sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
                 self.charge_bias_names["%s%ie" % (self.charge_prefix, node)] = node
+                self.red_charge_bias[node] = sy.symbols("%s_{%ie}" % (self.redcharge_prefix, node))
                 
                 self.addParameter(
                     "%s%ie" % (self.charge_prefix, node),
