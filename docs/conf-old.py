@@ -10,16 +10,19 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+sys.setrecursionlimit(1500)
 
 # -- Project information -----------------------------------------------------
 
 project = 'PyCQED'
 copyright = '2022, Louis Fry-Bouriaux'
 author = 'Louis Fry-Bouriaux'
+
+# The full version, including alpha/beta/rc tags
+release = 'v0.11'
 
 
 # -- General configuration ---------------------------------------------------
@@ -36,9 +39,6 @@ extensions = [
     'sphinxcontrib.bibtex'
 ]
 
-# Configure bibtex bibliography source
-bibtex_bibfiles = ["refs.bib"]
-
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -53,9 +53,21 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'bizstyle'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
+
+# -- Options for MathJax -----------------------------------------------------
+mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+
+# -- Options for rinoh -------------------------------------------------------
+latex_elements = {
+    'papersize': 'letterpaper',
+    'pointsize': '10pt',
+    'preamble': '',
+#    'figure-align': 'htbp'
+}
+

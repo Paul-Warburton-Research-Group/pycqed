@@ -1,5 +1,5 @@
 .. PyCQED documentation master file, created by
-   sphinx-quickstart on Mon May 30 15:27:51 2022.
+   sphinx-quickstart on Sat Nov  9 20:16:02 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -39,65 +39,65 @@ How the Code Works
 Here we describe how the code builds circuit Hamiltonians and how parameter sweeps are performed.
 
 Module circuit_graph
-====================
+==================
 
-.. automodule:: pycqed.circuit_graph
+.. automodule:: src.pycqed.circuit_graph
    :members:
    :undoc-members:
 
 Module symbolic_system
-======================
+==================
 
-.. automodule:: pycqed.symbolic_system
+.. automodule:: pycqed.src.circuitspec
    :members:
    :undoc-members:
 
 Module numerical_system
-=======================
+================
 
-.. automodule:: pycqed.numerical_system
+.. automodule:: pycqed.src.hamilspec
    :members:
    :undoc-members:
 
 Module parameters
 =================
 
-.. automodule:: pycqed.parameters
+.. automodule:: pycqed.src.parameters
    :members:
    :undoc-members:
 
 Module units
 ============
 
-.. automodule:: pycqed.units
+.. automodule:: pycqed.src.units
    :members:
    :undoc-members:
 
 Module dataspec
 ===============
 
-.. automodule:: pycqed.dataspec
+.. automodule:: pycqed.src.dataspec
    :members:
    :undoc-members:
 
 Module util
 ===========
 
-.. automodule:: pycqed.util
+.. automodule:: pycqed.src.util
    :members:
    :undoc-members:
 
 Module text2latex
 =================
 
-.. automodule:: pycqed.text2latex
+.. automodule:: pycqed.src.text2latex
    :members:
    :undoc-members:
 
 Module physical_constants
 =========================
 
-.. automodule:: pycqed.physical_constants
+.. automodule:: pycqed.src.physical_constants
    :members:
    :undoc-members:
 
@@ -106,3 +106,4 @@ References
 
 .. bibliography:: refs.bib
    :style: plain
+
