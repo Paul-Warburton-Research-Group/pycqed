@@ -25,9 +25,10 @@ jobs:
       uses: snok/install-poetry@v1
     - name: Install system dependencies
       run: sudo apt-get install -y graphviz
-    - name: Run unit tests
+    - name: Run examples
       run: |
         poetry install
+        cd examples
         poetry run python transmon-example.py
         poetry run python fluxonium-example.py
         poetry run python averin-coupler.py
