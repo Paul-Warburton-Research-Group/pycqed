@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: '*'
+
+jobs:
+  examples:
+    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+    strategy:
+      matrix:
+        python-version: ["3.9.15"]
+        os: [ubuntu-latest]
+
+    steps:
+    - name: Run action checkout v3
+      uses: actions/checkout@v3
+    - name: Run action setup-python v4 for Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+          python-version: ${{ matrix.python-version }}
+    - name: Run action install-poetry v1
+      uses: snok/install-poetry@v1
+    - name: Install system dependencies
+      run: sudo apt-get install -y graphviz
+    - name: Run unit tests
+      run: |
+        poetry install
+        poetry run python transmon-example.py
+        poetry run python fluxonium-example.py
+        poetry run python averin-coupler.py
+        poetry run python resonator-example.py
+        poetry run python local-basis-example.py
+        poetry run python jpsq-example.py
