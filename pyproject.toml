@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyscqed"
-version = "0.1.0"
+version = "0.12.0-dev"
 description = "Python Superconducting Circuit Quantum Electrodynamics Simulation Package"
 authors = ["Louis Fry-Bouriaux"]
 
