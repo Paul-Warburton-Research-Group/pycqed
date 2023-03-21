@@ -52,8 +52,8 @@ class NumericalSystem(ds.TempData):
         self.getSymbolicExpressions()
     
     # Called when deleting
-    def __del__(self):
-        self.clearSessionData()
+    #def __del__(self):
+    #    self.clearSessionData()
     
     def getNodeList(self):
         return self.SS.nodes
