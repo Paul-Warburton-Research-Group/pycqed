@@ -54,16 +54,16 @@ circuit.getQuantumHamiltonian()
 # The charging energy at node 1 is:
 
 Ec = circuit.getSingleParticleChargingEnergies()[1]
-display(Ec)
+Ec
 
 # The Josephson energy of the single JJ is:
 
 Ej = circuit.getJosephsonEnergies()[(0, 1, 2)]
-display(Ej)
+Ej
 
 # We know from Averin _et al_ that to maximize the electrostatic coupling, we need to maximize the ratio of the charging energy to the Josephson energy, this can the be expressed as:
 
-display(Ec/Ej)
+Ec/Ej
 
 # Where it is clear that both the junction critical current and all the capacitances have to be minimized.
 #
@@ -92,7 +92,7 @@ hamil.setParameterValues(
 # -
 
 H = hamil.getHamiltonian()
-display(H)
+H
 
 # The minimum gap is just the difference between the first excited and ground states:
 
