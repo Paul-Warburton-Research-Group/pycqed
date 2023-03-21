@@ -56,12 +56,12 @@ The Graphviz exectuables must be installed and added to the system path for the 
 <h2> Quick Start </h2>
 
 The best way to get started quickly is to build upon the examples provided in the `notebooks/` directory. There are several use cases covered, ordered from simplest to most advanced usage of the package:
-* `transmon-example.ipynb`: Basic simulation of a transmon qubit, replicating results obtained from a more approximated model of this circuit.
-* `fluxonium-example.ipynb`: Simulation of the fluxonium qubit reported by Alibaba. The results they obtain are reproduced numerically, including the qubit spectrum, resonator dispersive shift and qubit-qubit coupling energy.
-* `averin-coupler.ipynb`: Extensive simulations and example of a process for designing a tunable capacitive coupling element for quantum annealing applications. This notebooks make extensive use of parametric expressions to express circuit components in terms of fabrication parameters and to approximate tuneable Josephson junctions. The response of a dispersively coupled resonator is also analysed.
-* `resonator-example.ipynb`: In depth analysis of a resonator coupled to a RF-SQUID flux qubit. The resonator dispersive shift, qubit Lamb shift and cavity photon-dependent AC-Stark shift are analysed.
-* `local-basis-example.ipynb`: Here we reduce both a RF-SQUID flux qubit and a Cooper-pair box qubit to the two-level system representation using the local basis reduction technique.
-* `jpsq-example.ipynb`: Simulations of Josephson Phase-Slip Qubits are performed, demonstrating how certain circuit components impact the tunneling interference physics of this device.
+* `transmon-example.py`: Basic simulation of a transmon qubit, replicating results obtained from a more approximated model of this circuit.
+* `fluxonium-example.py`: Simulation of the fluxonium qubit reported by Alibaba. The results they obtain are reproduced numerically, including the qubit spectrum, resonator dispersive shift and qubit-qubit coupling energy.
+* `averin-coupler.py`: Extensive simulations and example of a process for designing a tunable capacitive coupling element for quantum annealing applications. This notebooks make extensive use of parametric expressions to express circuit components in terms of fabrication parameters and to approximate tuneable Josephson junctions. The response of a dispersively coupled resonator is also analysed.
+* `resonator-example.py`: In depth analysis of a resonator coupled to a RF-SQUID flux qubit. The resonator dispersive shift, qubit Lamb shift and cavity photon-dependent AC-Stark shift are analysed.
+* `local-basis-example.py`: Here we reduce both a RF-SQUID flux qubit and a Cooper-pair box qubit to the two-level system representation using the local basis reduction technique.
+* `jpsq-example.py`: Simulations of Josephson Phase-Slip Qubits are performed, demonstrating how certain circuit components impact the tunneling interference physics of this device.
 
 <h2> Core Basic Usage </h2>
 

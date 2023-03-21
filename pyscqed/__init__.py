@@ -21,4 +21,4 @@ from . import parameters
 from . import physical_constants
 from . import text2latex
 from . import util
-__version__ = "0.1.0"
+__version__ = "0.12.0-dev"
