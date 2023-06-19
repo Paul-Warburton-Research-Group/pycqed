@@ -64,9 +64,32 @@ class ParamCollectionTest(unittest.TestCase):
 
     def setUp(self):
         """Run before tests"""
+        self.names = ["Jc", "L1", "L2", "Long_one"]
+        self.values = [1.0, -0.5, -0.25, 1e-9]
 
     def tearDown(self):
         """Run after tests"""
+
+    def test_paramcollection_creation_rules(self):
+        ParamCollection(self.names)
+        self.assertRaises(TypeError, ParamCollection, [1])
+        ParamCollection([])
+
+    def test_getters(self):
+        pc = ParamCollection(self.names)
+        self.assertTrue(all(x == y for x, y in zip(pc.getParameterList(), self.names)))
+
+    def test_setters(self):
+        pc = ParamCollection(self.names)
+        self.assertFalse(pc.allParametersSet())
+        set1 = {self.names[i]: self.values[i] for i in range(len(self.names))}
+        pc.setParameterValues(set1)
+        set2 = []
+        for i in range(len(self.names)):
+            set2.append(self.names[i])
+            set2.append(self.values[i])
+        pc.setParameterValues(*set2)
+        self.assertTrue(pc.allParametersSet())
 
     def test_can_use_param_with_none_value(self):
         pass
