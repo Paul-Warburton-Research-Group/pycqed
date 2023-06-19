@@ -45,36 +45,35 @@ class Param:
     :ivar symbol: A `sympy` symbol for the parameter.
     :ivar sweep: The sweep array.
     """
-    __types = ["type1", "type2"]
     __valid_scalar_types = [int, float, np.float64]
     
     def __init__(self, name, value=None, bounds=[-np.inf, np.inf], unit_pref=1.0):
         """Constructor method."""
         # Ensure name is a string and it has the correct format
         if type(name) is not str:
-            raise Exception("'name' is not a string.")
+            raise TypeError("'name' is not a string.")
         if name.find(' ') >= 0:
-            raise Exception("'name' should not have any whitespace characters.")
+            raise ValueError("'name' should not have any whitespace characters.")
         # Ensure value is a float if it is not None
         if value is not None:
             if type(value) not in self.__valid_scalar_types:
-                raise Exception("'value' is not a float.")
+                raise TypeError("'value' is not a float.")
         # Ensure bounds is a list of two floats
         if type(bounds) is not list:
-            raise Exception("'bounds' is not a list.")
+            raise TypeError("'bounds' is not a list.")
         else:
             if len(bounds) != 2:
-                raise Exception("'bounds' should only have two values, %i found." % len(bounds))
+                raise TypeError("'bounds' should only have two values, %i found." % len(bounds))
             if (type(bounds[0]) is not float or type(bounds[1]) is not float) and (type(bounds[0]) is not int or type(bounds[1]) is not int):
-                raise Exception("'bounds' should contain floats.")
+                raise TypeError("'bounds' should contain floats.")
         # Ensure lower bound is smaller than upper bound
         if bounds[0] > bounds[1]:
-            raise Exception("Lower bound is greater than upper bound in 'bounds'.")
+            raise ValueError("Lower bound is greater than upper bound in 'bounds'.")
         # Ensure unit pref is a float and is positive
         if type(unit_pref) not in self.__valid_scalar_types:
-            raise Exception("'unit_pref' is not a float.")
+            raise TypeError("'unit_pref' is not a float.")
         if float(unit_pref) < 0.0:
-            raise Exception("'unit_pref' is negative.")
+            raise ValueError("'unit_pref' is negative.")
         
         
         self.name = name
@@ -88,6 +87,7 @@ class Param:
         self.__upref = float(unit_pref)
         self.name_latex = t2l.latexify_param_name(self.name)
         self.sweep = np.array([])
+        self.N = 0
     
     def getValue(self):
         """ Get the current value of the parameter.
@@ -109,13 +109,13 @@ class Param:
         """
         # Ensure value is a float
         if type(value) not in self.__valid_scalar_types:
-            raise Exception("'value' is not a float.")
+            raise TypeError("'value' is not a float.")
         
         # Check bounds
-        if float(value) > self.__upper_bound:
-            raise Exception("Param %s 'value' exceeds specified upper bound." % (self.name))
-        if float(value) < self.__lower_bound:
-            raise Exception("Param %s 'value' exceeds specified lower bound." % (self.name))
+        if float(value) >= self.__upper_bound:
+            raise ValueError("Param %s 'value' exceeds specified upper bound." % (self.name))
+        if float(value) <= self.__lower_bound:
+            raise ValueError("Param %s 'value' exceeds specified lower bound." % (self.name))
         self.__value = float(value)
     
     def getBounds(self):
@@ -124,7 +124,7 @@ class Param:
         :return: The lower and upper bounds of the parameter.
         :rtype: list of two floats
         """
-        return [self._lower_bound, self.__upper_bound]
+        return [self.__lower_bound, self.__upper_bound]
     
     def setBounds(self, bounds):
         """ Set the bounds of the parameter.
@@ -138,15 +138,15 @@ class Param:
         """
         # Ensure bounds is a list of two floats
         if type(bounds) is not list:
-            raise Exception("'bounds' is not a list.")
+            raise TypeError("'bounds' is not a list.")
         else:
             if len(bounds) != 2:
-                raise Exception("'bounds' should only have two values, %i found." % len(bounds))
+                raise ValueError("'bounds' should only have two values, %i found." % len(bounds))
             if (type(bounds[0]) is not float or type(bounds[1]) is not float) and (type(bounds[0]) is not int or type(bounds[1]) is not int):
-                raise Exception("'bounds' should contain floats.")
+                raise TypeError("'bounds' should contain floats.")
         # Ensure lower bound is smaller than upper bound
         if bounds[0] > bounds[1]:
-            raise Exception("Lower bound is greater than upper bound in 'bounds'.")
+            raise ValueError("Lower bound is greater than upper bound in 'bounds'.")
         
         self.__lower_bound = float(bounds[0])
         self.__upper_bound = float(bounds[1])
@@ -169,24 +169,24 @@ class Param:
         :rtype: numpy.ndarray
         """
         # Ensure start is a float
-        if type(start) is not float and type(start) is not int:
-            raise Exception("'start' is not a float.")
+        if type(start) not in self.__valid_scalar_types:
+            raise TypeError("'start' is not a float.")
         # Ensure end is a float
-        if type(end) is not float and type(end) is not int:
-            raise Exception("'end' is not a float.")
+        if type(end) not in self.__valid_scalar_types:
+            raise TypeError("'end' is not a float.")
         # Ensure N is an int
         if type(N) is not int:
-            raise Exception("'N' is not an int.")
+            raise TypeError("'N' is not an int.")
         
         # Check bounds
         if float(start) > self.__upper_bound:
-            raise Exception("Param %s 'start' exceeds specified upper bound." % (self.name))
+            raise ValueError("Param %s 'start' exceeds specified upper bound." % (self.name))
         if float(start) < self.__lower_bound:
-            raise Exception("Param %s 'start' exceeds specified lower bound." % (self.name))
+            raise ValueError("Param %s 'start' exceeds specified lower bound." % (self.name))
         if float(end) > self.__upper_bound:
-            raise Exception("Param %s 'end' exceeds specified upper bound." % (self.name))
+            raise ValueError("Param %s 'end' exceeds specified upper bound." % (self.name))
         if float(end) < self.__lower_bound:
-            raise Exception("Param %s 'end' exceeds specified lower bound." % (self.name))
+            raise ValueError("Param %s 'end' exceeds specified lower bound." % (self.name))
         
         self.sweep = np.linspace(float(start), float(end), N)
         self.N = N
@@ -259,7 +259,7 @@ class ParamCollection:
         :rtype: sympy.Symbol
         """
         if type(name) != str:
-            raise Exception("Parameter name %s is not a string." % repr(name))
+            raise TypeError("Parameter name %s is not a string." % repr(name))
         return self.__symbol_map[name]
     
     def getParameterValuesDict(self):
@@ -292,11 +292,11 @@ class ParamCollection:
         :return: None
         """
         if type(name) != str:
-            raise Exception("Parameter name %s is not a string." % repr(name))
+            raise TypeError("Parameter name %s is not a string." % repr(name))
         
         if symbol_override is not None:
             if type(symbol_override) != sy.Symbol:
-                raise Exception("Symbol %s is not a sympy.Symbol instance." % repr(symbol_override))
+                raise TypeError("Symbol %s is not a sympy.Symbol instance." % repr(symbol_override))
         
         if name not in list(self.__collection.keys()):
             self.__collection[name] = Param(name)
@@ -326,7 +326,7 @@ class ParamCollection:
         :return: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         else:
             del self.__collection[name]
             del self.__symbol_map[name]
@@ -356,7 +356,7 @@ class ParamCollection:
         :rtype: str
         """
         if symbol not in self.__symbol_map.values():
-            raise Exception("Symbol '%s' was not found." % repr(symbol))
+            raise ValueError("Symbol '%s' was not found." % repr(symbol))
         for k, v in self.__symbol_map.items():
             if symbol == v:
                 return k
@@ -376,7 +376,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in self.__collection.keys():
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         # Don't update the value if this parameter is parameterised by others
         if name in self.__parameterisation.keys():
@@ -400,7 +400,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         return self.__collection[name].getValue()
     
@@ -417,7 +417,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         return self.__collection[name].sweep
     
     def getParameterLatexName(self, name):
@@ -433,7 +433,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         return self.__collection[name].name_latex
     
     def setParameterValues(self, *name_value_pairs):
@@ -448,7 +448,7 @@ class ParamCollection:
         """
         if len(list(name_value_pairs)) == 1:
             if type(name_value_pairs[0]) is not dict:
-                raise Exception("Argument should be a dictionary, not '%s'." % repr(type(name_value_pairs[0])))
+                raise TypeError("Argument should be a dictionary, not '%s'." % repr(type(name_value_pairs[0])))
             #for k,v in name_value_pairs[0].items():
             #    self.__collection[k].setValue(v)
             #return
@@ -465,12 +465,12 @@ class ParamCollection:
         
         # Check there are as many parameters as values
         if len(keys) != len(values):
-            raise Exception("'name_value_pairs' definition invalid.")
+            raise ValueError("'name_value_pairs' definition invalid.")
         
         for i, name in enumerate(keys):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             if name in self.__parameterisation.keys():
                 print("Warning: Parameter %s is parameterised so it will not be set to the requested value." % name)
                 continue
@@ -492,7 +492,7 @@ class ParamCollection:
         for name in list(names):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             values[name] = self.__collection[name].getValue()
         return values
     
@@ -511,7 +511,7 @@ class ParamCollection:
         for name in list(names):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             values[self.__symbol_map[name]] = self.__collection[name].getValue()
         return values
     
@@ -549,7 +549,7 @@ class ParamCollection:
         for i, name in enumerate(list(names)):
             # Check name is defined
             if type(name) != str:
-                raise Exception("Parameter name %s is not a string." % repr(name))
+                raise TypeError("Parameter name %s is not a string." % repr(name))
             self.addParameter(name, symbol_override=symbol_overrides[i])
             values[name] = self.__symbol_map[name]
         return values
@@ -577,14 +577,14 @@ class ParamCollection:
         :rtype: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         # Check the symbols in expression are actually all registered and get their names
         names = []
         rev_map = {v: k for k, v in self.__symbol_map.items()}
         for sym in expression.free_symbols:
             if sym not in self.getSymbolList().values():
-                raise Exception("Symbol '%s' not registered." % repr(sym))
+                raise ValueError("Symbol '%s' not registered." % repr(sym))
             names.append(rev_map[sym])
         
         for pname in names:
@@ -603,7 +603,7 @@ class ParamCollection:
             for pname in names:
                 if pname in self.__parameterisation.keys():
                     self.__parameterisation_graph.remove_edge(pname, name)
-            raise Exception("Cycle(s) found in parameterisation graph upon addition of name '%s': %s" % (name, repr(cycles)))
+            raise ValueError("Cycle(s) found in parameterisation graph upon addition of name '%s': %s" % (name, repr(cycles)))
         
         # Register the parameterisation
         self.__parameterisation_graph.add_node(name)
@@ -627,7 +627,7 @@ class ParamCollection:
         :rtype: None
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         self.__parameterisation[name]["expression"] *= prefactor
     
     def getParametricExpression(self, name, expand=False):
@@ -645,7 +645,7 @@ class ParamCollection:
         :rtype: sympy type
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         if not expand:
             return self.__parameterisation[name]["expression"]
         
@@ -683,7 +683,7 @@ class ParamCollection:
         :rtype: list
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         
         return self.__parameterisation[name]["parameters"]
     
@@ -699,10 +699,10 @@ class ParamCollection:
         :rtype: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         
         
         # If we want to remove the associated parameters, we'll also need to check they can actually be removed without breaking everything
@@ -723,7 +723,7 @@ class ParamCollection:
         :rtype: bool
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         names = self.__parameterisation[name]['parameters']
         if None in self.getParameterValues(*names).values():
@@ -744,7 +744,7 @@ class ParamCollection:
         pnames = []
         for name in list(names):
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             
             # FIXME: Parameterisations can depend on others
             if name in list(self.__parameterisation.keys()):
@@ -787,11 +787,11 @@ class ParamCollection:
         """
         # Ensure name is a string
         if type(name) is not str:
-            raise Exception("'name' is not a string.")
+            raise TypeError("'name' is not a string.")
         
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         swp = list(sweep_params)
         return {
@@ -1036,7 +1036,7 @@ class ParamCollection:
                 # Determine if data is keyed
                 if type(util.pickleRead(data[0])) == dict:
                     if key is None:
-                        raise Exception("'key' optional parameter should be specified for 'data' of type dict (in temporary files).")
+                        raise TypeError("'key' optional parameter should be specified for 'data' of type dict (in temporary files).")
                 else:
                     key = None
                 
@@ -1044,7 +1044,7 @@ class ParamCollection:
             
             # Extract the keyed data
             if key is None:
-                raise Exception("'key' optional parameter should be specified for 'data' of type dict.")
+                raise ValueError("'key' optional parameter should be specified for 'data' of type dict.")
             data = data[key]
             
             if type(data[0]) in [str, bytes, os.PathLike]:
@@ -1053,12 +1053,12 @@ class ParamCollection:
         if type(ind_var) is str:
             # Check the independent variable exists
             if ind_var not in self.getParameterNamesList():
-                raise Exception("Independent variable '%s' does not exist." % ind_var)
+                raise ValueError("Independent variable '%s' does not exist." % ind_var)
             
             # Check the static variables exist
             for k in static_vars.keys():
                 if k not in self.getParameterNamesList():
-                    raise Exception("Static variable '%s' does not exist." % k)
+                    raise ValueError("Static variable '%s' does not exist." % k)
             
             if len(self.sweep_spec) == 1:
                 if not using_tmp_files:
@@ -1111,12 +1111,12 @@ class ParamCollection:
             # Check the independent variables exist
             for k in ind_var:
                 if k not in self.getParameterNamesList():
-                    raise Exception("Independent variable '%s' does not exist." % k)
+                    raise ValueError("Independent variable '%s' does not exist." % k)
             
             # Check the static variables exist
             for k in static_vars.keys():
                 if k not in self.getParameterNamesList():
-                    raise Exception("Static variable '%s' does not exist." % k)
+                    raise ValueError("Static variable '%s' does not exist." % k)
             
             # Get the indices of the parameters in the sweep specification
             # and the length of the data arrays
@@ -1166,7 +1166,7 @@ class ParamCollection:
                     shape = np.array(util.pickleRead(data[self.collapsedIndices(*l)])[key]).shape
                     return [self.getParameterSweep(iv) for iv in ind_var], np.array([util.pickleRead(f)[key] for f in res]).reshape(*[Ns[iv] for iv in ind_var],*shape).T, static_vals
         else:
-            raise Exception("Invalid independent variable specification. Found type '%s'" % repr(type(ind_var)))
+            raise TypeError("Invalid independent variable specification. Found type '%s'" % repr(type(ind_var)))
     
     ###################################################################################################################
     #       Internal
