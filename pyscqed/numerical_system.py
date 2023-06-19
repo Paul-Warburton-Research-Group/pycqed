@@ -422,6 +422,62 @@ class NumericalSystem(ds.TempData):
         if self.regen_nodes != []:
             self.getExpandedOperatorsMap(self.regen_nodes)
     
+    def getLinearPart(self):
+        # Get charging energy
+        Hq = self.units.getPrefactor("Ec")*0.5*\
+        util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
+        
+        # Get flux energy
+        Hf = self.units.getPrefactor("El")*0.5*\
+        util.mdot((self.Pnp + self.Pbinp).T, self.Linvnp, self.Pnp + self.Pbinp)[0, 0]
+        
+        return Hq + Hf
+    
+    def getStaticJosephsonPart(self):
+        # Need the branch DoFs in the possibly transformed representation
+        Pp = self.SS.Rnb*self.SS.Rinv*self.SS.node_vector
+        
+        # Get the Josephson energy
+        Hj_l = []
+        Hj_r = []
+        for i, edge in enumerate(self.SS.edges):
+            if self.Jvecnp[i] == 0.0:
+                continue
+            prod1 = 0.0
+            prod2 = 0.0
+            if len(Pp[i].atoms()) > 2: # Case where there is sum of elements
+                prod1 = 1.0
+                prod2 = 1.0
+                # Left
+                for arg in Pp[i].args:
+                    node = self.SS.node_map_rev[arg.args[1]]
+                    if arg.args[0] > 0:
+                        prod1 *= self.circ_operators[node]["disp"]
+                    else:
+                        prod1 *= self.circ_operators[node]["disp_adj"]
+                
+                # Right
+                for arg in Pp[i].args:
+                    node = self.SS.node_map_rev[arg.args[1]]
+                    if arg.args[0] < 0:
+                        prod2 *= self.circ_operators[node]["disp"]
+                    else:
+                        prod2 *= self.circ_operators[node]["disp_adj"]
+            else:
+                prod1 = 1.0
+                prod2 = 1.0
+                node = self.SS.node_map_rev[Pp[i].args[1]]
+                if Pp[i].args[0] > 0:
+                    prod1 *= self.circ_operators[node]["disp"]
+                    prod2 *= self.circ_operators[node]["disp_adj"]
+                else:
+                    prod1 *= self.circ_operators[node]["disp_adj"]
+                    prod2 *= self.circ_operators[node]["disp"]
+        
+            Hj_l.append(-0.5*self.units.getPrefactor("Ej")*self.Jvecnp[i]*prod1)
+            Hj_r.append(-0.5*self.units.getPrefactor("Ej")*self.Jvecnp[i]*prod2)
+        return Hj_l, Hj_r
+    
     ###################################################################################################################
     #       Evaluables
     ###################################################################################################################
