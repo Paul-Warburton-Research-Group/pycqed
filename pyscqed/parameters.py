@@ -224,6 +224,7 @@ class ParamCollection:
         for name in names:
             self.__collection[name] = Param(name)
             self.__symbol_map[name] = self.__collection[name].symbol
+            self.__parameterisation_graph.add_node(name)
     
     ###################################################################################################################
     #       Basic Parameter Manipulation Functions
@@ -303,6 +304,7 @@ class ParamCollection:
             if symbol_override is not None:
                 self.__collection[name].symbol = symbol_override
             self.__symbol_map[name] = self.__collection[name].symbol
+            self.__parameterisation_graph.add_node(name)
     
     def addParameters(self, *names):
         """ Adds multiple new parameters to the collection if they do not already exist. If some or all exist, nothing is reported.
@@ -561,24 +563,24 @@ class ParamCollection:
         :rtype: list
         """
         return list(self.__parameterisation.keys())
-    
+
     def addParameterisation(self, name, expression):
         """ Registers a parameterisation of the parameter `name` in terms of symbols returned by :func:`getSymbols`. It is allowed to use `sympy` functions such as `sympy.cos` in expressions, and also any previously defined parameters. If the parameterisation already exists, it is overwritten.
-        
+
         :param name: The name of the parameter that is being parameterised.
         :type name: str
-        
+
         :param expression: A `sympy` expression in terms of other parameters.
         :type expression: float, int, variable
         
         :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds. Also raises an exception if this parameterisation would cause a cycle in the dependency tree of nested parameterisations.
-        
+
         :return: None
         :rtype: None
         """
         if name not in list(self.__collection.keys()):
             raise ValueError("'%s' parameter was not found." % name)
-        
+
         # Check the symbols in expression are actually all registered and get their names
         names = []
         rev_map = {v: k for k, v in self.__symbol_map.items()}
@@ -586,32 +588,24 @@ class ParamCollection:
             if sym not in self.getSymbolList().values():
                 raise ValueError("Symbol '%s' not registered." % repr(sym))
             names.append(rev_map[sym])
-        
+
+        # Make temp copy of graph
+        graph = self.__parameterisation_graph.copy()
+
+        # Make edges from the names of included parameters
         for pname in names:
-            # Add an edge to the graph if this parameterisation depends on others
-            if pname in self.__parameterisation.keys():
-                self.__parameterisation_graph.add_edge(pname, name)
-        
-        # Check that there are no cycles induced by this parameterisation
-        cycles = None
-        try:
-            cycles = nx.find_cycle(self.__parameterisation_graph, orientation="original")
-        except nx.NetworkXNoCycle:
-            pass
-        if cycles is not None:
-            # Remove the bad edges
-            for pname in names:
-                if pname in self.__parameterisation.keys():
-                    self.__parameterisation_graph.remove_edge(pname, name)
-            raise ValueError("Cycle(s) found in parameterisation graph upon addition of name '%s': %s" % (name, repr(cycles)))
-        
+            graph.add_edge(pname, name)
+
+        # Test that the graph is a DAG
+        assert nx.is_directed_acyclic_graph(graph), "A cyclic dependency was detected with this parameterisation."
+
         # Register the parameterisation
-        self.__parameterisation_graph.add_node(name)
         self.__parameterisation[name] = {
             "expression": expression,
             "parameters": names
         }
-    
+        self.__parameterisation_graph = graph
+
     def addParameterisationPrefactor(self, name, prefactor):
         """ Add a prefactor to a parameterisation expression. This is mechanism for implementing unit conversion between parameters if required.
         
@@ -708,7 +702,9 @@ class ParamCollection:
         # If we want to remove the associated parameters, we'll also need to check they can actually be removed without breaking everything
         #for sname in self.__parameterisation[name]["parameters"]:
         #    del self.__collection[sname]
-        self.__parameterisation_graph.remove_node(name)
+        names = self.__parameterisation[name]["parameters"]
+        for pname in names:
+            self.__parameterisation_graph.remove_edge(pname, name)
         del self.__parameterisation[name]
     
     def parameterisationParametersSet(self, name):
@@ -761,11 +757,11 @@ class ParamCollection:
         pd_graph = nx.nx_pydot.to_pydot(self.__parameterisation_graph)
         
         # Compile the graphviz source
-        gv_graph = gv.Source(pd_graph.create(format='dot').decode('utf8'))
-        
-        # Return the object, which should be rendered in a jupyter notebook
-        if filename is None:
-            return gv_graph
+        src = pd_graph.create(format='dot').decode('utf8')
+        if filename is not None:
+            with open(filename, "w") as fd:
+                fd.write(src)
+        return gv.Source(src)
     
     ###################################################################################################################
     #       Parameter Sweeping Functions
@@ -1218,6 +1214,8 @@ class ParamCollection:
         # Start with the nodes that have no in_degree (independent parameterisations)
         names = [node for node in all_nodes if G.in_degree[node] == 0]
         for name in names:
+            if name not in self.__parameterisation:
+                continue
             params = self.__parameterisation[name]
             subs = self.getSymbolValues(*params['parameters'])
             #print(params['expression'])
