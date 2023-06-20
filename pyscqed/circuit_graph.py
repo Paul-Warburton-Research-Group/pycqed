@@ -323,13 +323,11 @@ class CircuitGraph:
         pd_graph = nx.nx_pydot.to_pydot(G)
         
         # Compile the graphviz source
-        gv_graph = gv.Source(pd_graph.create(format='dot').decode('utf8'))
-        
-        # Return the object, which should be rendered in a jupyter notebook
-        if filename is None:
-            return gv_graph
-        
-        # Save to file in specified format
+        src = pd_graph.create(format='dot').decode('utf8')
+        if filename is not None:
+            with open(filename, "w") as fd:
+                fd.write(src)
+        return gv.Source(src)
     
     #
     # INTERNAL
