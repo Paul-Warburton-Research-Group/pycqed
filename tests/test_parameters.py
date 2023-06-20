@@ -1,9 +1,43 @@
 """Test the parameter API."""
 import unittest
+import os
 
 import numpy as np
+import sympy as sy
+import graphviz as gv
 
 from pyscqed.parameters import Param, ParamCollection
+
+
+def check_numerically_equal(Expr1, Expr2, n=100):
+    """ Adapted from https://stackoverflow.com/questions/37112738/sympy-comparing-expressions
+    """
+    # Determine over what range to generate random numbers
+    sample_min = -1
+    sample_max = 1
+
+    # Regroup all free symbols from both expressions
+    free_symbols = set(Expr1.free_symbols) | set(Expr2.free_symbols)
+
+    # Numeric (brute force) equality testing n-times
+    for i in range(n):
+        your_values = np.random.uniform(sample_min, sample_max, len(free_symbols))
+        Expr1_num=Expr1
+        Expr2_num=Expr2
+        for symbol, number in zip(free_symbols, your_values):
+            Expr1_num=Expr1_num.subs(symbol, sy.Float(number))
+            Expr2_num=Expr2_num.subs(symbol, sy.Float(number))
+        Expr1_num=complex(Expr2_num)
+        Expr2_num=complex(Expr2_num)
+        if not np.allclose(Expr1_num, Expr2_num, atol=0):
+            return False
+    return True
+
+
+def check_symbolically_equal(Expr1, Expr2):
+    if (Expr1.equals(Expr2)):
+        return True
+    return False
 
 
 class ParamTest(unittest.TestCase):
@@ -90,6 +124,58 @@ class ParamCollectionTest(unittest.TestCase):
             set2.append(self.values[i])
         pc.setParameterValues(*set2)
         self.assertTrue(pc.allParametersSet())
+
+    def test_parametric_expressions(self):
+        # Setup the param collection
+        pc = ParamCollection(self.names)
+        pc.getSymbols("Ltot", "wweird")
+        self.assertTrue({"Ltot", "wweird"} < set(pc.getParameterNamesList()))
+
+        # Can create a new parametric expression that depends on existing parameters
+        symbols = pc.getSymbolList()
+        pc.addParameterisation("Ltot", (symbols["L1"] + symbols["L2"]) * 0.5)
+        self.assertTrue({"Ltot"} == set(pc.getParametricParametersList()))
+        expected = symbols["L1"]/2 + symbols["L2"]/2
+        self.assertTrue(sy.simplify(pc.getParametricExpression("Ltot") - expected) == 0)
+
+        # Can create a new parametric expression that makes existing parameters dependent on others
+        pc.addParameterisation("Long_one", (10*sy.cos(2*sy.pi*symbols["wweird"]*symbols["Jc"])))
+        self.assertTrue({"Long_one", "Ltot"} == set(pc.getParametricParametersList()))
+
+        # Cannot create a circular dependency
+        self.assertRaises(AssertionError, pc.addParameterisation, "wweird", 2 * symbols["Long_one"])
+        self.assertTrue({"Long_one", "Ltot"} == set(pc.getParametricParametersList()))
+
+        # Can create a nested parameterisation
+        pc.addParameterisation("wweird", sy.sqrt(symbols["Ltot"]))
+        self.assertTrue({"wweird", "Long_one", "Ltot"} == set(pc.getParametricParametersList()))
+        self.assertTrue(check_numerically_equal(pc.getParametricExpression("Ltot"), expected))
+
+        # By default the nested parameterisations are not expanded
+        expected = sy.sqrt(symbols["L1"]/2 + symbols["L2"]/2)
+        self.assertFalse(check_symbolically_equal(pc.getParametricExpression("wweird"), expected))
+        self.assertTrue(check_numerically_equal(pc.getParametricExpression("wweird", True), expected))
+
+        # Can get the parameters involved in the parameterisation to depth 1.
+        self.assertTrue(set(pc.getParameterisationParameters("Long_one")) ==  set(['Jc', 'wweird']))
+
+        # Can remove parameterisations
+        pc.rmParameterisation("Ltot")
+        self.assertTrue({"wweird", "Long_one"} == set(pc.getParametricParametersList()))
+        pc.rmParameterisation("Long_one")
+        self.assertTrue({"wweird"} == set(pc.getParametricParametersList()))
+        expected = symbols["L1"]/2 + symbols["L2"]/2
+        self.assertRaises(ValueError, pc.getParametricExpression, "Ltot")
+        self.assertRaises(ValueError, pc.getParametricExpression, "Long_one")
+
+        # Can write get the parameterisation graph
+        obj = pc.drawParameterisationGraph("test.dot")
+        self.assertTrue(type(obj) == gv.Source)
+        self.assertTrue(os.path.exists("./test.dot"))
+        os.remove("./test.dot")  # Uncomment to visualize with `dot -Tsvg .\test.dot -o test.svg`
+
+    def test_parameter_sweeping(self):
+        pass
 
     def test_can_use_param_with_none_value(self):
         pass
