@@ -1204,68 +1204,36 @@ class ParamCollection:
         self.__parameterisation_graph = data[3]
     
     def _update_parameterisations(self):
-        
         checked_nodes = set()
         checked_edges = set()
         G = self.__parameterisation_graph
         all_nodes = set(G.nodes)
         all_edges = set(G.edges)
-        
-        # Start with the nodes that have no in_degree (independent parameterisations)
-        names = [node for node in all_nodes if G.in_degree[node] == 0]
-        for name in names:
-            if name not in self.__parameterisation:
+
+        # Start with the nodes that have no in_degree, i.e. that are independent,
+        # and get all the descendant paths.
+        paths = {node: nx.descendants(G, node) for node in all_nodes if G.in_degree[node] == 0}
+
+        # Get the parameters that need to have all values substituted
+        dependent_nodes = all_nodes - set(paths)
+
+        # For each path, update the substitutions using the independent parameters
+        dependent_node_values = {k: None for k in dependent_nodes}
+        for independent_node, path in paths.items():
+            symbol = self.getSymbol(independent_node)
+            value = self.getParameterValue(independent_node)
+            if value is None:
                 continue
-            params = self.__parameterisation[name]
-            subs = self.getSymbolValues(*params['parameters'])
-            #print(params['expression'])
-            #print(subs)
-            #print(params['expression'].subs(subs))
-            synum = params['expression'].subs(subs)
-            num = float(synum)
-            self.__collection[name].setValue(num)
-            checked_nodes.add(name)
-        if checked_nodes == all_nodes:
-            #print("All nodes checked")
-            return
-        
-        # Now we need to iterate until all nodes are accounted for
-        while checked_edges != all_edges:# and not self.allParametersSet():
-            # Get the next set of names to check
-            new_names = []
-            for name in names:
-                edges = G.out_edges(name)
-                new_names.extend([edge[1] for edge in edges])
-                checked_edges |= set(edges)
-            
-            # Perform the update
-            for name in new_names:
-                params = self.__parameterisation[name]
-                subs = self.getSymbolValues(*params['parameters'])
-                #print(params['expression'])
-                #print(subs)
-                #print(params['expression'].subs(subs))
-                synum = params['expression'].subs(subs)
-                num = float(synum)
-                self.__collection[name].setValue(num)
-            
-            names = new_names.copy()
-        
-        #try:
-        #    for k, v in self.__parameterisation.items():
-        #        subs = self.getSymbolValues(*v['parameters'])
-        #        self.__collection[k].setValue(float(v['expression'].subs(subs)))
-        #except:
-        #    pass
+            for dependent_node in path:
+                if dependent_node_values[dependent_node] is None:
+                    expression = self.getParametricExpression(dependent_node, expand=True)
+                else:
+                    expression = dependent_node_values[dependent_node]
+                dependent_node_values[dependent_node] = expression.subs({symbol: value})
 
-
-
-
-
-
-
-
-
-
-
-
+        # Update all the dependent parameter values we can
+        for k, v in dependent_node_values.items():
+            try:
+                self.__collection[k].setValue(float(v))
+            except:
+                continue
