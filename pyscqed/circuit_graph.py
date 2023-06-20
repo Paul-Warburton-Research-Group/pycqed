@@ -68,11 +68,11 @@ class CircuitGraph:
         
         # Check there are no mutual inductors specified
         if component[0] == self._element_prefixes[4]:
-            raise Exception("Cannot add a mutual inductance to a circuit branch.")
+            raise TypeError("Cannot add a mutual inductance to a circuit branch.")
         
         # Check the symbol is correct
         if component[0] not in self._element_prefixes:
-            raise Exception("Invalid component symbol '%s', it should be one of %s." % (component[0], repr(self._element_prefixes)))
+            raise ValueError("Invalid component symbol '%s', it should be one of %s." % (component[0], repr(self._element_prefixes)))
         
         # Add the branch
         k = self.circuit_graph.add_edge(n1, n2, component=component, label=component)
@@ -89,22 +89,22 @@ class CircuitGraph:
         alt_edge2 = (edge2[1], edge2[0], edge2[2])
         
         if edge1 not in self.sc_spanning_tree_wc.edges and alt_edge1 not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge1))
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge1))
         if edge2 not in self.sc_spanning_tree_wc.edges and alt_edge2 not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge2))
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge2))
         
         edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
         edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
         
         # Check the edges are inductive
         if self.isInductiveEdge(edge1) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge1))
+            raise TypeError("The selected edge %s is not inductive." % repr(edge1))
         if self.isInductiveEdge(edge2) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge2))
+            raise TypeError("The selected edge %s is not inductive." % repr(edge2))
         
         # Ensure component is a mutual inductance
         if component[0] != self._element_prefixes[4]:
-            raise Exception("Branch coupling component must be a mutual inductance.")
+            raise TypeError("Branch coupling component must be a mutual inductance.")
         
         self.coupled_branches[component] = (edge1, edge2)
     
@@ -112,21 +112,21 @@ class CircuitGraph:
         """
         """
         if node not in self.circuit_graph.nodes:
-            raise Exception("Node %i not part of the circuit graph." % node)
+            raise ValueError("Node %i not part of the circuit graph." % node)
         
         if node == 0:
-            raise Exception("Cannot couple a resonator to the ground node of the circuit")
+            raise ValueError("Cannot couple a resonator to the ground node of the circuit")
         
         if self.resonators_cap[node] is not None:
-            raise Exception("Node %i already has a resonator coupled to it (only one per node supported currently)." % node)
+            raise ValueError("Node %i already has a resonator coupled to it (only one per node supported currently)." % node)
         
         # Check there are no mutual inductors specified
         if component[0] != self._element_prefixes[0]:
-            raise Exception("The resonator coupling element must be a capacitor.")
+            raise TypeError("The resonator coupling element must be a capacitor.")
         
         # Detect duplicates
         if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
+            raise ValueError("Component %s already exists. Change the name of the component." % component)
         
         # Create the resonator capacitor and inductor symbols
         Cr = "%s%ir" % (self._element_prefixes[0], node)
@@ -170,20 +170,20 @@ class CircuitGraph:
         """
         alt_edge = (edge[1], edge[0], edge[2])
         if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge))
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge))
         edge = alt_edge if edge not in self.sc_spanning_tree_wc.edges else edge
         
         # Ensure component is a mutual inductance
         if component[0] != self._element_prefixes[4]:
-            raise Exception("Flux bias coupling component must be a mutual inductance.")
+            raise TypeError("Flux bias coupling component must be a mutual inductance.")
         
         # Detect duplicates
         if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
+            raise ValueError("Component %s already exists. Change the name of the component." % component)
         
         # Check the edge has an inductor
         if self.isInductiveEdge(edge) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge))
+            raise TypeError("The selected edge %s is not inductive." % repr(edge))
         
         # Save it
         self.flux_bias_edges[edge] = component
@@ -194,15 +194,15 @@ class CircuitGraph:
         """
         """
         if node not in self.circuit_graph.nodes:
-            raise Exception("Node %i not part of the circuit graph." % node)
+            raise ValueError("Node %i not part of the circuit graph." % node)
         
         # Ensure component is a capacitor
         if component[0] != self._element_prefixes[0]:
-            raise Exception("Charge bias coupling component must be a capacitor.")
+            raise TypeError("Charge bias coupling component must be a capacitor.")
         
         # Detect duplicates
         if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
+            raise ValueError("Component %s already exists. Change the name of the component." % component)
         
         self.charge_bias_nodes[node] = component
     
@@ -264,7 +264,7 @@ class CircuitGraph:
     
     def getComponentEdge(self, component):
         if component not in self.components_map.values():
-            raise Exception("Component %s does not exist." % component)
+            raise ValueError("Component %s does not exist." % component)
         
         # Capacitive edges are not directional
         if component[0] == self._element_prefixes[0]:
@@ -277,7 +277,7 @@ class CircuitGraph:
     
     def getLoopsFromClosureBranch(self, edge):
         if edge not in self.closure_branches:
-            raise Exception("Edge %s not a closure branch." % repr(edge))
+            raise TypeError("Edge %s not a closure branch." % repr(edge))
         
         loop_keys = []
         for key, loop_edges in self.sc_loops.items():
@@ -287,7 +287,7 @@ class CircuitGraph:
     
     def getEdgesSharedWithLoop(self, loop_key):
         if loop_key not in self.sc_loops.keys():
-            raise Exception("No loop key %i available." % loop_key)
+            raise ValueError("No loop key %i available." % loop_key)
         
         # Get the loops connected to this loop and save their edges
         loop_edges = set(self.sc_loops[loop_key])
@@ -306,7 +306,7 @@ class CircuitGraph:
     
     def drawGraphViz(self, graph='Circuit', filename=None, format='svg'):
         if graph not in self._subgraphs:
-            raise Exception("Invalid subgraph type '%s'." % graph)
+            raise TypeError("Invalid subgraph type '%s'." % graph)
         
         if graph == "Circuit":
             G = self.circuit_graph
@@ -348,7 +348,7 @@ class CircuitGraph:
         # Detect duplicates
         tmp = list(set(self.components_map.values()))
         if len(tmp) != len(self.components_map.values()):
-            raise Exception("Duplicate component detected. Change the name of the component.")
+            raise ValueError("Duplicate component detected. Change the name of the component.")
         
         # Reverse the keys for convenience, use more memory rather than complicating later code
         tmp = {}
