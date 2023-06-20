@@ -29,7 +29,7 @@ def check_numerically_equal(Expr1, Expr2, n=100):
             Expr2_num=Expr2_num.subs(symbol, sy.Float(number))
         Expr1_num=complex(Expr2_num)
         Expr2_num=complex(Expr2_num)
-        if not np.allclose(Expr1_num, Expr2_num, atol=0):
+        if not np.allclose(Expr1_num, Expr2_num, rtol=0, atol=1e-15):
             return False
     return True
 
@@ -125,7 +125,7 @@ class ParamCollectionTest(unittest.TestCase):
         pc.setParameterValues(*set2)
         self.assertTrue(pc.allParametersSet())
 
-    def test_parametric_expressions(self):
+    def test_parametric_expressions_symbolic(self):
         # Setup the param collection
         pc = ParamCollection(self.names)
         pc.getSymbols("Ltot", "wweird")
@@ -169,10 +169,41 @@ class ParamCollectionTest(unittest.TestCase):
         self.assertRaises(ValueError, pc.getParametricExpression, "Long_one")
 
         # Can write get the parameterisation graph
-        obj = pc.drawParameterisationGraph("test.dot")
+        obj = pc.drawParameterisationGraph("test1.dot")
         self.assertTrue(type(obj) == gv.Source)
-        self.assertTrue(os.path.exists("./test.dot"))
-        os.remove("./test.dot")  # Uncomment to visualize with `dot -Tsvg .\test.dot -o test.svg`
+        self.assertTrue(os.path.exists("./test1.dot"))
+        os.remove("./test1.dot")  # Comment to visualize with `dot -Tsvg .\test.dot -o test.svg`
+
+    def test_parametric_expressions_numeric(self):
+        pc = ParamCollection(self.names)
+        pc.getSymbols("Ltot", "wweird")
+        symbols = pc.getSymbolList()
+        pc.addParameterisation("Ltot", (symbols["L1"] + symbols["L2"]) * 0.5)
+        pc.addParameterisation("Long_one", (10*sy.cos(2*sy.pi*symbols["wweird"]*symbols["Jc"])))
+        pc.addParameterisation("wweird", sy.sqrt(symbols["Ltot"]))
+        # Partial setting of parameters is allowed, parameters that cannot be updated remain None
+        pc.setParameterValues({
+            "L1": 0.5,
+            "L2": 2.0
+        })
+        values_dict = pc.getParameterValuesDict()
+        # Only "Long_one" parameter is missing a value, as it depends on "Jc"
+        self.assertTrue(values_dict['Long_one'] is None)
+        pc.setParameterValues({
+            "Jc": 0.1,
+            "L1": 1.0,
+            "L2": 2.0
+        })
+        values_dict = pc.getParameterValuesDict()
+        L1 = pc.getParameterValue("L1")
+        L2 = pc.getParameterValue("L2")
+        Jc = pc.getParameterValue("Jc")
+        # Does substitution honour the parametric equations?
+        self.assertTrue(np.isclose(values_dict['Ltot'], 0.5 * (L1 + L2), rtol=0, atol=1e-15))
+        self.assertTrue(np.isclose(values_dict['wweird'], np.sqrt(0.5 * (L1 + L2)), rtol=0, atol=1e-15))
+        self.assertTrue(np.isclose(
+            values_dict['Long_one'], 10*np.cos(2*np.pi*np.sqrt(0.5 * (L1 + L2))*Jc), rtol=0, atol=1e-14)
+        )
 
     def test_parameter_sweeping(self):
         pass
