@@ -337,8 +337,8 @@ class CircuitGraph:
         self._get_virtual_grounds()
         self._get_spanning_tree()
         self._get_sc_circuit()
-        self._get_sc_loops()
         self._get_closure_branches()
+        self._get_sc_loops()
         self._get_loop_graph()
     
     def _update_components_map(self):
@@ -412,6 +412,8 @@ class CircuitGraph:
 
             # Get closure branches, i.e. those that do not appear in the spanning tree
             closure_edges = list(set(subG.edges) - set(S.edges))
+
+            # Format closure branches
             for i, edge in enumerate(closure_edges):
                 closure_edges[i] = (edge[1], edge[0], edge[2]) # reverse edge to preserve flow order
 
@@ -443,6 +445,7 @@ class CircuitGraph:
     def _get_sc_loops(self):
         c = 0
         self.sc_loops = {}
+        self.loop_closures = {}
         for source_node, spanning in self.virtual_grounds.items():
             closure_edges, S = spanning
 
@@ -456,7 +459,23 @@ class CircuitGraph:
                     self.sc_loops[c].extend(list(p1))
 
                 self.sc_loops[c].append(edge)
+                self.loop_closures[c] = edge
                 c+=1
+
+        # Modify the closure branches if we can
+        for i, edges in self.sc_loops.items():
+            if self.isJosephsonEdge(self.loop_closures[i]):
+                continue
+            if all(not self.isJosephsonEdge(edge) for edge in edges):
+                continue
+            found = False
+            for edge in edges:
+                if self.isJosephsonEdge(edge):
+                    found = True
+                    break
+            if found:
+                index = self.closure_branches.index(self.loop_closures[i])
+                self.closure_branches[index] = edge
     
     def _get_closure_branches(self):
         self.closure_branches = []
