@@ -1,6 +1,9 @@
 """Test the circuit graph API."""
 import unittest
+import itertools
 import os
+
+import numpy as np
 
 from pyscqed.circuit_graph import CircuitGraph
 
@@ -44,28 +47,54 @@ class CircuitGraphTest(unittest.TestCase):
         self.assertRaises(ValueError, graph.addBranch, 0, 1, "J")
 
         # Test that in loops with JJs and Ls, the JJs are always the closure branches for all gauge choices
-        graph = CircuitGraph()
-        graph.addBranch(0, 1, "L")
-        graph.addBranch(0, 1, "I")
-        self.assertTrue(graph.isJosephsonEdge(graph.closure_branches[0]))
+        for perm in itertools.permutations(["I", "L"], 2):
+            graph = CircuitGraph()
+            for item in perm:
+                graph.addBranch(0, 1, item)
+            self.assertTrue(len(graph.closure_branches) == 1)
+            self.assertTrue(graph.isJosephsonEdge(graph.closure_branches[0]))
 
-        graph = CircuitGraph()
-        graph.addBranch(0, 1, "I")
-        graph.addBranch(0, 1, "L")
-        self.assertTrue(graph.isJosephsonEdge(graph.closure_branches[0]))
+        for perm in itertools.permutations(["I1", "I2", "L"], 3):
+            graph = CircuitGraph()
+            for item in perm:
+                graph.addBranch(0, 1, item)
+            self.assertTrue(len(graph.closure_branches) == 2)
+            self.assertTrue(all(graph.isJosephsonEdge(branch) for branch in graph.closure_branches))
 
+        for perm in itertools.permutations(["I1", "I2", "I3", "L"], 4):
+            graph = CircuitGraph()
+            for item in perm:
+                graph.addBranch(0, 1, item)
+            self.assertTrue(len(graph.closure_branches) == 3)
+            self.assertTrue(all(graph.isJosephsonEdge(branch) for branch in graph.closure_branches))
+
+        # Test that a loop with inductors allow the closure branches to be inductive
         graph = CircuitGraph()
-        graph.addBranch(0, 1, "L")
         graph.addBranch(0, 1, "I1")
-        graph.addBranch(0, 1, "I2")
-        self.assertTrue(len(graph.closure_branches) == 2)
-        for branch in graph.closure_branches:
-            self.assertTrue(graph.isJosephsonEdge(branch))
+        graph.addBranch(1, 2, "L1")
+        graph.addBranch(1, 2, "L2")
+        self.assertTrue(len(graph.closure_branches) == 1)
+        self.assertTrue(graph.isInductiveEdge(graph.closure_branches[0]))
+
+        # Test that a loop that is not superconducting has no closure branches
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I")
+        graph.addBranch(1, 2, "C")
+        graph.addBranch(1, 2, "L")
+        self.assertTrue(len(graph.closure_branches) == 0)
 
         graph = CircuitGraph()
-        graph.addBranch(0, 1, "I1")
-        graph.addBranch(0, 1, "L")
-        graph.addBranch(0, 1, "I2")
-        self.assertTrue(len(graph.closure_branches) == 2)
-        for branch in graph.closure_branches:
-            self.assertTrue(graph.isJosephsonEdge(branch))
+        graph.addBranch(0, 1, "I")
+        graph.addBranch(1, 2, "C")
+        graph.addBranch(0, 2, "L")
+        self.assertTrue(len(graph.closure_branches) == 0)
+
+        # Test that a large superconducting loop has a single closure branch
+        graph = CircuitGraph()
+        N = 6
+        for i in range(N):
+            graph.addBranch(
+                i, (i + 1) % N,
+                "%s%i" % (graph._element_prefixes[np.random.randint(2) + 1], i)
+            )
+        self.assertTrue(len(graph.closure_branches) == 1)
