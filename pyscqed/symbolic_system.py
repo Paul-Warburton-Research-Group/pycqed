@@ -316,7 +316,7 @@ class SymbolicSystem(ParamCollection):
         
         # Diagonals
         for i, edge in enumerate(self.edges):
-            if self.CG.flux_bias_edges[edge] is None:
+            if edge not in self.CG.flux_bias_edges:
                 cstr = self.CG.components_map[edge]
                 if cstr[0] == self.CG._element_prefixes[1]:
                     Mb[i, i] = self.circuit_params[cstr]
@@ -324,8 +324,11 @@ class SymbolicSystem(ParamCollection):
                 cstr = self.CG.components_map[edge]
                 if cstr[0] == self.CG._element_prefixes[1]:
                     L = self.circuit_params[cstr]
-                    M = self.circuit_params[self.SS.flux_bias_edges[edge]]
-                    Mb[i, i] = (L**2 - M**2)/L
+                    if self.CG.flux_bias_edges[edge] is None:
+                        Mb[i, i] = L
+                    else:
+                        M = self.circuit_params[self.CG.flux_bias_edges[edge]]
+                        Mb[i, i] = (L**2 - M**2)/L
         
         # Off-diagonals: always coupled branches
         for component, edges in self.CG.coupled_branches.items():
@@ -720,96 +723,24 @@ class SymbolicSystem(ParamCollection):
             self.addParameterisation(self.CG.resonators_cap[node]["gC"], gC)
     
     def _create_flux_bias_symbols(self):
-        
         # First add empty flux bias placeholders
         for edge in self.edges:
             self.flux_bias_prefactor[edge] = 1.0
             self.flux_bias[edge] = 0.0
             self.red_flux_bias[edge] = 0.0
             self.exp_flux_bias[edge] = 1.0
-        
-        # Now update the flux bias
-        for edge in self.edges:
-            if edge in self.CG.closure_branches or (edge[1], edge[0], edge[2]) in self.CG.closure_branches:
-                # Josephson closure branches can take the bias term.
-                if self.CG.isJosephsonEdge(edge):
-                    self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                    
-                    self.flux_bias_names["phi%i%i-%ie"%edge] = edge
-                    self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                    self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                    
-                    self.addParameter(
-                        "phi%i%i-%ie" % edge,
-                        sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                    )
-                    print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
-                # Try to find a suitable JJ edge if the closure branch is inductive
-                elif self.CG.isInductiveEdge(edge) or self.CG.isPhaseSlipEdge(edge):
-                    
-                    # Find the current loop
-                    loop_keys = self.CG.getLoopsFromClosureBranch(edge)
-                    this_loop = None
-                    for k in loop_keys:
-                        if edge in self.CG.sc_loops[k] or (edge[1], edge[0], edge[2]) in self.CG.sc_loops[k]:
-                            this_loop = k
-                            break
-                    
-                    if this_loop is None:
-                        raise Exception("No superconducting loop found for closure branch %s. This should never happen so there must be a bug." % repr(edge))
-                    
-                    # Just find the first edge that has a JJ and use that for the bias
-                    shared_edges = self.CG.getEdgesSharedWithLoop(this_loop)
-                    found = False
-                    for le in shared_edges:
-                        if self.CG.isJosephsonEdge(le):
-                            found = True
-                            break
-                    
-                    if not found:
-                        #raise Exception("No JJs found in loop %i for scalar flux bias term. Need the flux basis to put the bias on an inductor. (Not implemented)" % this_loop)
-                        if self.CG.isPhaseSlipEdge(edge):
-                            found = False
-                            for le in shared_edges:
-                                if self.CG.isInductiveEdge(le):
-                                    found = True
-                                    break
-                            if not found:
-                                raise Exception("Cannot flux bias a loop with only phase-slip junctions, consider including the parasitic terms in series.")
-                            
-                            # FIXME: use the original edge name for the flux bias to follow convention of using the closure branch notation
-                            edge = le
-                        
-                        # Now look for an edge that is inductive
-                        
-                        self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                        self.flux_bias_names["phi%i%i-%ie"%edge] = edge
-                        self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                        self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                        
-                        self.addParameter(
-                            "phi%i%i-%ie" % edge,
-                            sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                        )
-                        print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
-                        print("WARNING: Flux bias %s is on an inductive edge, and thus a suitable basis must be used." % ("phi%i%i-%ie" % edge))
-                        continue
-                    
-                    # Reverse the edge if required
-                    le = (le[1], le[0], le[2]) if le not in self.edges else le
-                    
-                    # Add the terms
-                    self.flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                    
-                    self.flux_bias_names["phi%i%i-%ie" % edge] = le
-                    self.red_flux_bias[le] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                    self.exp_flux_bias[le] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-                    
-                    self.addParameter(
-                        "phi%i%i-%ie" % edge,
-                        sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-                    )
-                    print("Flux bias term %s is on edge %s (%s)" % ("phi%i%i-%ie" % edge, repr(le), self.CG.components_map[le]))
+
+        # Iterate through the user selected flux biased edges
+        for edge in self.CG.flux_bias_edges:
+            self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+            self.flux_bias_names["phi%i%i-%ie"%edge] = edge
+            self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+            self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+            self.addParameter(
+                "phi%i%i-%ie" % edge,
+                sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+            )
+            print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
     
     def _create_charge_bias_symbols(self):
         for node in self.nodes:
