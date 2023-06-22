@@ -35,7 +35,7 @@ class CircuitGraph:
     ]
     
     def __init__(self, circuit_name=""):
-        """
+        """ Abstract description of a superconducting circuit.
         """
         
         # Components associated with each branch
@@ -63,7 +63,7 @@ class CircuitGraph:
         self.circuit_graph = nx.MultiGraph(circuit_name=circuit_name)
         
     def addBranch(self, n1, n2, component):
-        """
+        """ Adds a branch between two circuit nodes that contains a single component.
         """
         
         # Check there are no mutual inductors specified
@@ -83,7 +83,7 @@ class CircuitGraph:
         self._update_couplings_map((n1, n2, k))
     
     def coupleBranchesInductively(self, edge1, edge2, component):
-        """
+        """ Couples two branches inductively.
         """
         alt_edge1 = (edge1[1], edge1[0], edge1[2])
         alt_edge2 = (edge2[1], edge2[0], edge2[2])
@@ -109,7 +109,7 @@ class CircuitGraph:
         self.coupled_branches[component] = (edge1, edge2)
     
     def coupleResonatorCapacitively(self, node, component):
-        """
+        """ Couples a linear resonator capacitively.
         """
         if node not in self.circuit_graph.nodes:
             raise ValueError("Node %i not part of the circuit graph." % node)
@@ -155,43 +155,43 @@ class CircuitGraph:
         }
     
     def removeAllResonators(self):
-        """
+        """ Removes all resonator descriptions from the circuit graph.
         """
         for node in self.circuit_graph.nodes:
             self.resonators_cap[node] = None
     
     def coupleResonatorInductively(self, edge, component, frequency, impedance=50.0):
-        """
+        """ Couples a linear resonator inductively.
         """
         pass
     
-    def addFluxBias(self, edge, component, source_inductance=None):
-        """
+    def addFluxBias(self, edge, component=None):
+        """ Adds a flux bias term to the specified branch.
         """
         alt_edge = (edge[1], edge[0], edge[2])
         if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
             raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge))
         edge = alt_edge if edge not in self.sc_spanning_tree_wc.edges else edge
-        
-        # Ensure component is a mutual inductance
-        if component[0] != self._element_prefixes[4]:
-            raise TypeError("Flux bias coupling component must be a mutual inductance.")
-        
-        # Detect duplicates
-        if component in self.components_map.values():
-            raise ValueError("Component %s already exists. Change the name of the component." % component)
-        
-        # Check the edge has an inductor
-        if self.isInductiveEdge(edge) == False:
-            raise TypeError("The selected edge %s is not inductive." % repr(edge))
-        
+
+        if component is not None:
+            # Ensure component is a mutual inductance
+            if component[0] != self._element_prefixes[4]:
+                raise TypeError("Flux bias coupling component must be a mutual inductance.")
+
+            # Detect duplicates
+            if component in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % component)
+
+            # Check the edge has an inductor
+            if self.isInductiveEdge(edge) == False:
+                raise TypeError("The selected edge %s is not inductive." % repr(edge))
+
         # Save it
         self.flux_bias_edges[edge] = component
-        
-        # FIXME: For now we assume the source inductance is the same as the in-circuit inductance.
+
     
     def addChargeBias(self, node, component):
-        """
+        """ Adds a charge bias term to the specified node.
         """
         if node not in self.circuit_graph.nodes:
             raise ValueError("Node %i not part of the circuit graph." % node)
@@ -207,30 +207,40 @@ class CircuitGraph:
         self.charge_bias_nodes[node] = component
     
     def isCapacitiveEdge(self, edge):
+        """ Checks a branch contains a capacitor.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[0]:
             return True
         return False
     
     def isInductiveEdge(self, edge):
+        """ Checks a branch contains an inductor.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[1]:
             return True
         return False
     
     def isJosephsonEdge(self, edge):
+        """ Checks a branch contains a JJ.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[2]:
             return True
         return False
     
     def isPhaseSlipEdge(self, edge):
+        """ Checks a branch contains a phase-slip nano wire.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[3]:
             return True
         return False
     
     def getCapacitiveEdges(self):
+        """ Gets a mapping of all edges that contain a capacitor.
+        """
         edges_map = {v: k for k, v in self.components_map.items()}
         ret = {}
         for c, edge in edges_map.items():
@@ -239,6 +249,8 @@ class CircuitGraph:
         return ret
     
     def getInductiveEdges(self):
+        """ Gets a mapping of all edges that contain an inductor.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
@@ -247,6 +259,8 @@ class CircuitGraph:
         return ret
     
     def getJosephsonEdges(self):
+        """ Gets a mapping of all edges that contain a JJ.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
@@ -255,6 +269,8 @@ class CircuitGraph:
         return ret
     
     def getPhaseSlipEdges(self):
+        """ Gets a mapping of all edges that contain a phase-slip nanowire.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
@@ -263,6 +279,8 @@ class CircuitGraph:
         return ret
     
     def getComponentEdge(self, component):
+        """ Gets the edge associated with the specified component.
+        """
         if component not in self.components_map.values():
             raise ValueError("Component %s does not exist." % component)
         
@@ -362,10 +380,10 @@ class CircuitGraph:
             self.charge_bias_nodes[n1] = None
         if n2 not in self.charge_bias_nodes.keys():
             self.charge_bias_nodes[n2] = None
-        if (n1, n2, k) not in self.flux_bias_edges.keys():
-            self.flux_bias_edges[(n1, n2, k)] = None
-        if (n2, n1, k) not in self.flux_bias_edges.keys():
-            self.flux_bias_edges[(n2, n1, k)] = None
+        #if (n1, n2, k) not in self.flux_bias_edges.keys():
+        #    self.flux_bias_edges[(n1, n2, k)] = None
+        #if (n2, n1, k) not in self.flux_bias_edges.keys():
+        #    self.flux_bias_edges[(n2, n1, k)] = None
         if n1 not in self.resonators_cap.keys():
             self.resonators_cap[n1] = None
         if n2 not in self.resonators_cap.keys():
@@ -462,20 +480,20 @@ class CircuitGraph:
                 self.loop_closures[c] = edge
                 c+=1
 
-        # Modify the closure branches if we can
-        for i, edges in self.sc_loops.items():
-            if self.isJosephsonEdge(self.loop_closures[i]):
-                continue
-            if all(not self.isJosephsonEdge(edge) for edge in edges):
-                continue
-            found = False
-            for edge in edges:
-                if self.isJosephsonEdge(edge):
-                    found = True
-                    break
-            if found:
-                index = self.closure_branches.index(self.loop_closures[i])
-                self.closure_branches[index] = edge
+        # # Modify the closure branches if we can
+        # for i, edges in self.sc_loops.items():
+            # if self.isJosephsonEdge(self.loop_closures[i]):
+                # continue
+            # if all(not self.isJosephsonEdge(edge) for edge in edges):
+                # continue
+            # found = False
+            # for edge in edges:
+                # if self.isJosephsonEdge(edge):
+                    # found = True
+                    # break
+            # if found:
+                # index = self.closure_branches.index(self.loop_closures[i])
+                # self.closure_branches[index] = edge
     
     def _get_closure_branches(self):
         self.closure_branches = []
