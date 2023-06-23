@@ -22,6 +22,18 @@ def do_all_branch_type_tests_on_branch(testobj, G, edge, expected_type):
             testobj.assertFalse(fn[i](edge))
 
 
+def all_loops_are_unique(testobj, G):
+    """There should be at least one distinct branch per loop."""
+    available = {}
+    for i, loop in G.sc_loops.items():
+        curr = set(loop)
+        for j, other_loop in G.sc_loops.items():
+            if i == j:
+                continue
+            curr -= set(other_loop)
+        testobj.assertTrue(len(curr) > 0)
+
+
 def plot_all_graphs(G, prefix):
     for t in G._subgraphs:
         G.drawGraphViz(graph=t, filename=("%s_%s" % (prefix, t)))
@@ -46,50 +58,58 @@ class CircuitGraphTest(unittest.TestCase):
         # Cannot add invalid components
         self.assertRaises(ValueError, graph.addBranch, 0, 1, "J")
 
-        # Test that in loops with JJs and Ls, the JJs are always the closure branches for all gauge choices
+        # Test that the correct number of superconducting loops are detected
         for perm in itertools.permutations(["I", "L"], 2):
             graph = CircuitGraph()
             for item in perm:
                 graph.addBranch(0, 1, item)
             self.assertTrue(len(graph.closure_branches) == 1)
-            self.assertTrue(graph.isJosephsonEdge(graph.closure_branches[0]))
+            self.assertTrue(len(graph.sc_loops) == 1)
+            all_loops_are_unique(self, graph)
 
         for perm in itertools.permutations(["I1", "I2", "L"], 3):
             graph = CircuitGraph()
             for item in perm:
                 graph.addBranch(0, 1, item)
             self.assertTrue(len(graph.closure_branches) == 2)
-            self.assertTrue(all(graph.isJosephsonEdge(branch) for branch in graph.closure_branches))
+            self.assertTrue(len(graph.sc_loops) == 2)
+            all_loops_are_unique(self, graph)
 
         for perm in itertools.permutations(["I1", "I2", "I3", "L"], 4):
             graph = CircuitGraph()
             for item in perm:
                 graph.addBranch(0, 1, item)
             self.assertTrue(len(graph.closure_branches) == 3)
-            self.assertTrue(all(graph.isJosephsonEdge(branch) for branch in graph.closure_branches))
+            self.assertTrue(len(graph.sc_loops) == 3)
+            all_loops_are_unique(self, graph)
 
-        # Test that a loop with inductors allow the closure branches to be inductive
+        # Floating single loop
         graph = CircuitGraph()
         graph.addBranch(0, 1, "I1")
         graph.addBranch(1, 2, "L1")
         graph.addBranch(1, 2, "L2")
         self.assertTrue(len(graph.closure_branches) == 1)
-        self.assertTrue(graph.isInductiveEdge(graph.closure_branches[0]))
+        self.assertTrue(len(graph.sc_loops) == 1)
+        all_loops_are_unique(self, graph)
 
-        # Test that a loop that is not superconducting has no closure branches
+        # No conducting loops
         graph = CircuitGraph()
         graph.addBranch(0, 1, "I")
         graph.addBranch(1, 2, "C")
         graph.addBranch(1, 2, "L")
         self.assertTrue(len(graph.closure_branches) == 0)
+        self.assertTrue(len(graph.sc_loops) == 0)
+        all_loops_are_unique(self, graph)
 
         graph = CircuitGraph()
         graph.addBranch(0, 1, "I")
         graph.addBranch(1, 2, "C")
         graph.addBranch(0, 2, "L")
         self.assertTrue(len(graph.closure_branches) == 0)
+        self.assertTrue(len(graph.sc_loops) == 0)
+        all_loops_are_unique(self, graph)
 
-        # Test that a large superconducting loop has a single closure branch
+        # Large loop
         graph = CircuitGraph()
         N = 6
         for i in range(N):
@@ -98,3 +118,33 @@ class CircuitGraphTest(unittest.TestCase):
                 "%s%i" % (graph._element_prefixes[np.random.randint(2) + 1], i)
             )
         self.assertTrue(len(graph.closure_branches) == 1)
+        self.assertTrue(len(graph.sc_loops) == 1)
+        all_loops_are_unique(self, graph)
+
+        # Loops in series forming a larger loop
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(0, 1, "C1")
+        graph.addBranch(0, 1, "L1") # 1 loop on (0, 1, k)
+        graph.addBranch(1, 2, "L2")
+        graph.addBranch(1, 2, "I2")
+        graph.addBranch(1, 2, "C2") # 1 loop on (1, 2, k)
+        graph.addBranch(0, 2, "I3")
+        graph.addBranch(0, 2, "I4")
+        graph.addBranch(0, 2, "L3") # 2 loops on (0, 2, k)
+        self.assertTrue(len(graph.closure_branches) == 5)
+        self.assertTrue(len(graph.sc_loops) == 5)
+        all_loops_are_unique(self, graph)
+
+        # Larger loops sharing a branch (3 in this case)
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(1, 2, "L1a")
+        graph.addBranch(2, 0, "L1b")
+        graph.addBranch(1, 3, "L2a")
+        graph.addBranch(3, 0, "L2b")
+        graph.addBranch(1, 4, "L3a")
+        graph.addBranch(4, 0, "L3b")
+        self.assertTrue(len(graph.closure_branches) == 3)
+        self.assertTrue(len(graph.sc_loops) == 3)
+        all_loops_are_unique(self, graph)
