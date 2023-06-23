@@ -149,8 +149,8 @@ class SymbolicSystem(ParamCollection):
 
             # Add the gate capacitances
             if node in self.CG.charge_bias_nodes:
-                if self.CG.charge_bias_nodes[node] is not None:
-                    cstr = self.CG.charge_bias_nodes[node]
+                if self.CG.charge_bias_nodes[node]["coupling_capacitance"] is not None:
+                    cstr = self.CG.charge_bias_nodes[node]["coupling_capacitance"]
                     M[i, i] += self.circuit_params[cstr]
 
             # Add the resonator capacitances
@@ -325,10 +325,10 @@ class SymbolicSystem(ParamCollection):
                 cstr = self.CG.components_map[edge]
                 if cstr[0] == self.CG._element_prefixes[1]:
                     L = self.circuit_params[cstr]
-                    if self.CG.flux_bias_edges[edge] is None:
+                    if self.CG.flux_bias_edges[edge]["mutual_inductance"] is None:
                         Mb[i, i] = L
                     else:
-                        M = self.circuit_params[self.CG.flux_bias_edges[edge]]
+                        M = self.circuit_params[self.CG.flux_bias_edges[edge]]["mutual_inductance"]
                         Mb[i, i] = (L**2 - M**2)/L
         
         # Off-diagonals: always coupled branches
@@ -614,31 +614,32 @@ class SymbolicSystem(ParamCollection):
         self.Rnb = self.Rbn.T # Node to branch
     
     def _create_circuit_symbols(self):
-        
         # Circuit components
         self.circuit_params = {} # FIXME: This attribute is now redundant, use the getSymbol function from parameters parent class.
         components = nx.get_edge_attributes(self.CG.circuit_graph, 'component').values()
         for component in components:
             self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
             self.addParameter(component)
-        
+
         # Mutually coupled branches
         for component, edges in self.CG.coupled_branches.items():
             self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
             self.addParameter(component)
-        
+
         # Charge bias capacitors
-        for component in self.CG.charge_bias_nodes.values():
+        for node, data in self.CG.charge_bias_nodes.items():
+            component = data["coupling_capacitance"]
             if component is not None:
                 self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
                 self.addParameter(component)
-        
+
         # Flux bias mutual inductors
-        for component in self.CG.flux_bias_edges.values():
+        for node, data in self.CG.flux_bias_edges.items():
+            component = data["mutual_inductance"]
             if component is not None:
                 self.circuit_params[component] = sy.symbols("%s_{%s}" % (component[0], component[1:]))
                 self.addParameter(component)
-    
+
     def _has_resonators(self):
         for node, resonator in self.CG.resonators_cap.items():
             if resonator is not None:
@@ -733,15 +734,15 @@ class SymbolicSystem(ParamCollection):
 
         # Iterate through the user selected flux biased edges
         for edge in self.CG.flux_bias_edges:
-            self.flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
-            self.flux_bias_names["phi%i%i-%ie"%edge] = edge
-            self.red_flux_bias[edge] += sy.symbols("%s_{%i%i-%ie}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
-            self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%i%i-%ie}}" % (self.redflux_prefix, edge[0], edge[1], edge[2]))
+            suffix = self.CG.flux_bias_edges[edge]["suffix"]
+            self.flux_bias[edge] += sy.symbols("%s_{%s}" % (self.flux_prefix, suffix))
+            self.flux_bias_names["phi%s" % suffix] = edge
+            self.red_flux_bias[edge] += sy.symbols("%s_{%s}" % (self.redflux_prefix, suffix))
+            self.exp_flux_bias[edge] *= sy.symbols("e^{i%s_{%s}}" % (self.redflux_prefix, suffix))
             self.addParameter(
-                "phi%i%i-%ie" % edge,
-                sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
+                "phi%s" % suffix,
+                sy.symbols("%s_{%s}" % (self.flux_prefix, suffix))
             )
-            print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
 
     def _create_charge_bias_symbols(self):
         # First add empty charge bias placeholders
@@ -751,12 +752,13 @@ class SymbolicSystem(ParamCollection):
 
         # Iterate through the user selected charge biased nodes
         for node in self.CG.charge_bias_nodes:
-            self.charge_bias[node] = sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
-            self.charge_bias_names["%s%ie" % (self.charge_prefix, node)] = node
-            self.red_charge_bias[node] = sy.symbols("%s_{%ie}" % (self.redcharge_prefix, node))
+            suffix = self.CG.charge_bias_nodes[node]["suffix"]
+            self.charge_bias[node] = sy.symbols("%s_{%s}" % (self.charge_prefix, suffix))
+            self.charge_bias_names["%s%s" % (self.charge_prefix, suffix)] = node
+            self.red_charge_bias[node] = sy.symbols("%s_{%s}" % (self.redcharge_prefix, suffix))
             self.addParameter(
-                "%s%ie" % (self.charge_prefix, node),
-                sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
+                "%s%s" % (self.charge_prefix, suffix),
+                sy.symbols("%s_{%s}" % (self.charge_prefix, suffix))
             )
 
     def _create_coordinate_transforms(self):

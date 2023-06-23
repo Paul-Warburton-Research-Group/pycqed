@@ -164,49 +164,67 @@ class CircuitGraph:
         """ Couples a linear resonator inductively.
         """
         pass
-    
-    def addFluxBias(self, edge, component=None):
+
+    def addFluxBias(self, edge_component, suffix, mutual_inductance=None):
         """ Adds a flux bias term to the specified branch.
         """
         # TODO: Check that edge belongs to a superconducting loop rather than an arbitrary conductive branch
+        edge = self.getComponentEdge(edge_component)
+        if type(suffix) is not str:
+            raise TypeError("The 'suffix' parameter is not a string.")
+        if len(suffix) > 8:
+            raise ValueError("The 'suffix' parameter is too long.")
         alt_edge = (edge[1], edge[0], edge[2])
         if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
             raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge))
         edge = alt_edge if edge not in self.sc_spanning_tree_wc.edges else edge
 
-        if component is not None:
+        if mutual_inductance is not None:
             # Ensure component is a mutual inductance
-            if component[0] != self._element_prefixes[4]:
+            if mutual_inductance[0] != self._element_prefixes[4]:
                 raise TypeError("Flux bias coupling component must be a mutual inductance.")
 
+            # We can't load a JJ branch
+            if not self.isInductiveEdge(edge):
+                raise TypeError("A mutual inductance must be coupled to an inductive branch.")
+
             # Detect duplicates
-            if component in self.components_map.values():
-                raise ValueError("Component %s already exists. Change the name of the component." % component)
+            if mutual_inductance in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % mutual_inductance)
 
             # Check the edge has an inductor
             if self.isInductiveEdge(edge) == False:
                 raise TypeError("The selected edge %s is not inductive." % repr(edge))
 
         # Save it
-        self.flux_bias_edges[edge] = component
+        self.flux_bias_edges[edge] = {
+            "mutual_inductance": mutual_inductance,
+            "suffix": suffix
+        }
 
-    
-    def addChargeBias(self, node, component=None):
+    def addChargeBias(self, node, suffix, coupling_capacitance=None):
         """ Adds a charge bias term to the specified node.
         """
         if node not in self.circuit_graph.nodes:
             raise ValueError("Node %i not part of the circuit graph." % node)
+        if type(suffix) is not str:
+            raise TypeError("The 'suffix' parameter is not a string.")
+        if len(suffix) > 8:
+            raise ValueError("The 'suffix' parameter is too long.")
 
-        if components is not None:
+        if coupling_capacitance is not None:
             # Ensure component is a capacitor
-            if component[0] != self._element_prefixes[0]:
+            if coupling_capacitance[0] != self._element_prefixes[0]:
                 raise TypeError("Charge bias coupling component must be a capacitor.")
 
             # Detect duplicates
-            if component in self.components_map.values():
-                raise ValueError("Component %s already exists. Change the name of the component." % component)
+            if coupling_capacitance in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % coupling_capacitance)
 
-        self.charge_bias_nodes[node] = component
+        self.charge_bias_nodes[node] = {
+            "coupling_capacitance": coupling_capacitance,
+            "suffix": suffix
+        }
     
     def isCapacitiveEdge(self, edge):
         """ Checks a branch contains a capacitor.
@@ -378,10 +396,10 @@ class CircuitGraph:
     
     def _update_couplings_map(self, edge):
         n1, n2, k = edge
-        if n1 not in self.charge_bias_nodes.keys():
-            self.charge_bias_nodes[n1] = None
-        if n2 not in self.charge_bias_nodes.keys():
-            self.charge_bias_nodes[n2] = None
+        #if n1 not in self.charge_bias_nodes.keys():
+        #    self.charge_bias_nodes[n1] = None
+        #if n2 not in self.charge_bias_nodes.keys():
+        #    self.charge_bias_nodes[n2] = None
         #if (n1, n2, k) not in self.flux_bias_edges.keys():
         #    self.flux_bias_edges[(n1, n2, k)] = None
         #if (n2, n1, k) not in self.flux_bias_edges.keys():
