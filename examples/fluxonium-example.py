@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -26,6 +26,7 @@ graph = CircuitGraph()
 graph.addBranch(0, 1, "C")
 graph.addBranch(0, 1, "L")
 graph.addBranch(0, 1, "I")
+graph.addFluxBias("I", "Z")
 graph.coupleResonatorCapacitively(1, "Cc")
 graph.drawGraphViz()
 
@@ -68,7 +69,7 @@ hamil.setParameterValues(
     "Cc", 0.3,
     "f1r", frA,
     "Z1r", ZrA,
-    "phi10-2e", 0.5
+    "phiZ", 0.5
 )
 
 # Verify what we get for the energies using these circuit parameters
@@ -89,12 +90,12 @@ print("w21/2pi =", E[2] - E[1])
 # We see the parameters we get are pretty close to what they have reported. The discrepancy is likely due to the inexact value of inductance and the details of their model implementation, for example the size of their truncation could play role.
 
 # Configure the sweep
-hamil.addSweep('phi10-2e', 0.25, 0.6, 101)
+hamil.addSweep('phiZ', 0.25, 0.6, 101)
 sweep = hamil.paramSweep(timesweep=True)
 
 # +
 # Get the sweep for a high value of Ic
-x, phi10e_sweep, v = hamil.getSweep(sweep, 'phi10-2e', {})
+x, phi10e_sweep, v = hamil.getSweep(sweep, 'phiZ', {})
 
 fig, ax = plt.subplots(1, 1, constrained_layout=True, figsize=(4, 6))
 
@@ -102,7 +103,7 @@ fig, ax = plt.subplots(1, 1, constrained_layout=True, figsize=(4, 6))
 for i in range(5):
     y = phi10e_sweep[i]-phi10e_sweep[0]
     ax.plot(x,y)
-ax.set_xlabel("$\Phi_{10e}$ ($\Phi_0$)")
+ax.set_xlabel("$\Phi_{Z}$ ($\Phi_0$)")
 ax.set_ylabel("$E_{g,i}$ (GHz)")
 ax.set_title("Energy Spectrum")
 ax.set_ylim(0, 8)
@@ -122,7 +123,7 @@ circuit.getParametricExpression('g1r')
 # +
 # Configure the parameter sweep
 hamil.newSweep()
-hamil.addSweep('phi10-2e', -1.0, 1.0, 201)
+hamil.addSweep('phiZ', -1.0, 1.0, 201)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian'),
@@ -142,7 +143,7 @@ sweep = hamil.paramSweep(timesweep=True)
 fr = hamil.getParameterValue('f1r')
 frl = hamil.getParameterValue('f1rl')
 
-x,Erwa,v = hamil.getSweep(sweep,'phi10-2e',{},evaluable='Resonator')
+x,Erwa,v = hamil.getSweep(sweep,'phiZ',{},evaluable='Resonator')
 Edressed = util.getCircuitLambShift(Erwa)
 # -
 
@@ -152,7 +153,7 @@ for i in range(5):
     plt.plot(x,y)
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.title("(Loaded) Dressed Coupler Energy Spectrum")
 
@@ -166,7 +167,7 @@ Eres = util.getResonatorShift(Erwa)
 plt.plot(x,Eres[0,0])
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}/2\pi$ (GHz)")
 plt.title("Resonator Modulation Against $Q_{1e}$")
 
@@ -175,16 +176,16 @@ plt.title("Resonator Modulation Against $Q_{1e}$")
 plt.plot(x,Eres[1, 0])
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}/2\pi$ (GHz)")
 plt.title("Resonator Modulation Against $Q_{1e}$")
 
 # The single-photon dispersive shift $\chi$ due to transitions between the ground and first excited states will then simply be:
 
 plt.plot(x, (Eres[1, 0] - Eres[0, 0])*1e3)
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\chi/2\pi$ (MHz)")
-plt.title("Resonator Modulation Against $Q_{1e}$")
+plt.title("Resonator Modulation Against $\\phi_{Z}$")
 
 # Indeed this appears to be close to the value report of 0.63 MHz.
 #
@@ -200,6 +201,8 @@ graph.addBranch(0, 2, "CB")
 graph.addBranch(0, 2, "LB")
 graph.addBranch(0, 2, "IB")
 graph.addBranch(1, 2, "Cc")
+graph.addFluxBias("IA","ZA")
+graph.addFluxBias("IB","ZB")
 graph.drawGraphViz()
 
 circuit = SymbolicSystem(graph)
@@ -234,20 +237,20 @@ hamil.setParameterValues(
     "LA", LA*1e12, # In pH
     "LB", LB*1e12, # In pH
     "Cc", 1.0,
-    "phi10-2e", 0.5,
-    "phi20-2e", 0.5
+    "phiZA", 0.5,
+    "phiZB", 0.5
 )
 # -
 
 # To reproduce the data shown in Figure 1(e), we'll set $\Phi_{20e} = 0.5 \Phi_0$ and sweep only $\Phi_{10e}$:
 
 # Configure the sweep
-hamil.addSweep('phi10-2e', 0.4, 0.5, 101)
+hamil.addSweep('phiZA', 0.4, 0.5, 101)
 sweep = hamil.paramSweep(timesweep=True)
 
 # +
 # Get the sweep for a high value of Ic
-x, phi10e_sweep, v = hamil.getSweep(sweep, 'phi10-2e', {})
+x, phi10e_sweep, v = hamil.getSweep(sweep, 'phiZA', {})
 
 fig, ax = plt.subplots(1, 2, constrained_layout=True)
 
@@ -255,7 +258,7 @@ fig, ax = plt.subplots(1, 2, constrained_layout=True)
 for i in range(5):
     y = phi10e_sweep[i]-phi10e_sweep[0]
     ax[0].plot(x,y)
-ax[0].set_xlabel("$\Phi_{10e}$ ($\Phi_0$)")
+ax[0].set_xlabel("$\Phi_{Z}$ ($\Phi_0$)")
 ax[0].set_ylabel("$E_{g,i}$ (GHz)")
 ax[0].set_title("Energy Spectrum")
 #ax[0].set_ylim(0.5, 2)
@@ -265,7 +268,7 @@ ax[0].set_title("Energy Spectrum")
 for i in range(5):
     y = phi10e_sweep[i]-phi10e_sweep[0]
     ax[1].plot(x,y)
-ax[1].set_xlabel("$\Phi_{10e}$ ($\Phi_0$)")
+ax[1].set_xlabel("$\Phi_{Z}$ ($\Phi_0$)")
 ax[1].set_ylabel("$E_{g,i}$ (GHz)")
 ax[1].set_title("Energy Spectrum")
 ax[1].set_ylim(1.15, 1.3)
