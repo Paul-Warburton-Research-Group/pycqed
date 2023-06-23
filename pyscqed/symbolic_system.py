@@ -133,12 +133,12 @@ class SymbolicSystem(ParamCollection):
             for i, node in enumerate(self.nodes):
                 bias_vec[i] = self.red_charge_bias[node]
         return sy.Matrix(bias_vec)
-    
+
     def getCapacitanceMatrix(self, parameterise=True):
         # WARN: Should be called only once in the parent class
         # First construct the matrix in the 'circuit basis'
         M = sy.eye(self.Nn) - sy.eye(self.Nn)
-        
+
         # Diagonal
         for i, node in enumerate(self.nodes):
             sym = 0.0
@@ -146,22 +146,23 @@ class SymbolicSystem(ParamCollection):
                 cstr = self.CG.components_map[edge]
                 if cstr[0] == self.CG._element_prefixes[0]:
                     M[i, i] += self.circuit_params[cstr]
-            
+
             # Add the gate capacitances
-            if self.CG.charge_bias_nodes[node] is not None:
-                cstr = self.CG.charge_bias_nodes[node]
-                M[i, i] += self.circuit_params[cstr]
-            
+            if node in self.CG.charge_bias_nodes:
+                if self.CG.charge_bias_nodes[node] is not None:
+                    cstr = self.CG.charge_bias_nodes[node]
+                    M[i, i] += self.circuit_params[cstr]
+
             # Add the resonator capacitances
             if self.CG.resonators_cap[node] is not None:
                 cstr1 = self.CG.resonators_cap[node]['coupling']
                 cstr2 = self.CG.resonators_cap[node]['Cr']
                 Cc = self.circuit_params[cstr1]
                 Cr = self.circuit_params[cstr2]
-                
+
                 # Effective capacitance due to the resonator
                 M[i, i] += Cc*Cr/(Cc + Cr)
-        
+
         # Off-diagonals
         for edge in self.CG.circuit_graph.edges: # Use circuit graph edges to get capacitors
             cstr = self.CG.components_map[edge]
@@ -172,24 +173,24 @@ class SymbolicSystem(ParamCollection):
                 j = self.nodes.index(edge[1])
                 M[i, j] -= self.circuit_params[cstr]
                 M[j, i] -= self.circuit_params[cstr]
-        
+
         if not parameterise:
             return M
-        
+
         # Parameterise the matrix elements
         for i in range(M.shape[0]):
             for j in range(i, M.shape[1]):
                 if M[i, j] == 0 or len(M[i, j].free_symbols) < 2:
                     continue
-                
+
                 name = "C%i%i" % (i, j)
                 self.addParameter(name)
                 self.addParameterisation(name, M[i, j])
                 M[i, j] = self.getSymbol(name)
                 M[j, i] = self.getSymbol(name)
-        
+
         return M
-    
+
     def getInverseCapacitanceMatrix(self, parameterise=True):
         # Try to invert the inductance matrix as-is
         try:
@@ -721,7 +722,7 @@ class SymbolicSystem(ParamCollection):
             
             # Get the coupling term
             self.addParameterisation(self.CG.resonators_cap[node]["gC"], gC)
-    
+
     def _create_flux_bias_symbols(self):
         # First add empty flux bias placeholders
         for edge in self.edges:
@@ -741,24 +742,23 @@ class SymbolicSystem(ParamCollection):
                 sy.symbols("%s_{%i%i-%ie}" % (self.flux_prefix, edge[0], edge[1], edge[2]))
             )
             print("Flux bias term %s is on edge %s (%s)." % ("phi%i%i-%ie" % edge, repr(edge), self.CG.components_map[edge]))
-    
+
     def _create_charge_bias_symbols(self):
+        # First add empty charge bias placeholders
         for node in self.nodes:
-            if self.CG.charge_bias_nodes[node] is None:
-                self.charge_bias[node] = 0.0
-                self.red_charge_bias[node] = 0.0
-            else:
-                self.charge_bias[node] = sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
-                self.charge_bias_names["%s%ie" % (self.charge_prefix, node)] = node
-                self.red_charge_bias[node] = sy.symbols("%s_{%ie}" % (self.redcharge_prefix, node))
-                
-                self.addParameter(
-                    "%s%ie" % (self.charge_prefix, node),
-                    sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
-                )
-        
-        #    self.red_charge_bias[edge] = 1.0
-    
+            self.charge_bias[node] = 0.0
+            self.red_charge_bias[node] = 0.0
+
+        # Iterate through the user selected charge biased nodes
+        for node in self.CG.charge_bias_nodes:
+            self.charge_bias[node] = sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
+            self.charge_bias_names["%s%ie" % (self.charge_prefix, node)] = node
+            self.red_charge_bias[node] = sy.symbols("%s_{%ie}" % (self.redcharge_prefix, node))
+            self.addParameter(
+                "%s%ie" % (self.charge_prefix, node),
+                sy.symbols("%s_{%ie}" % (self.charge_prefix, node))
+            )
+
     def _create_coordinate_transforms(self):
         self.coordinate_modes = {}
         

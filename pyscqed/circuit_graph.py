@@ -168,6 +168,7 @@ class CircuitGraph:
     def addFluxBias(self, edge, component=None):
         """ Adds a flux bias term to the specified branch.
         """
+        # TODO: Check that edge belongs to a superconducting loop rather than an arbitrary conductive branch
         alt_edge = (edge[1], edge[0], edge[2])
         if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
             raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge))
@@ -190,20 +191,21 @@ class CircuitGraph:
         self.flux_bias_edges[edge] = component
 
     
-    def addChargeBias(self, node, component):
+    def addChargeBias(self, node, component=None):
         """ Adds a charge bias term to the specified node.
         """
         if node not in self.circuit_graph.nodes:
             raise ValueError("Node %i not part of the circuit graph." % node)
-        
-        # Ensure component is a capacitor
-        if component[0] != self._element_prefixes[0]:
-            raise TypeError("Charge bias coupling component must be a capacitor.")
-        
-        # Detect duplicates
-        if component in self.components_map.values():
-            raise ValueError("Component %s already exists. Change the name of the component." % component)
-        
+
+        if components is not None:
+            # Ensure component is a capacitor
+            if component[0] != self._element_prefixes[0]:
+                raise TypeError("Charge bias coupling component must be a capacitor.")
+
+            # Detect duplicates
+            if component in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % component)
+
         self.charge_bias_nodes[node] = component
     
     def isCapacitiveEdge(self, edge):
