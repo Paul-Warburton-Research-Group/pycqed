@@ -22,6 +22,15 @@ def do_all_branch_type_tests_on_branch(testobj, G, edge, expected_type):
             testobj.assertFalse(fn[i](edge))
 
 
+def get_simple_test_graph():
+    graph = CircuitGraph()
+    graph.addBranch(0, 1, "I1")
+    graph.addBranch(0, 1, "I2")
+    graph.addBranch(0, 1, "C")
+    graph.addBranch(0, 1, "L")
+    return graph
+
+
 def all_loops_are_unique(testobj, G):
     """There should be at least one distinct branch per loop."""
     available = {}
@@ -183,3 +192,40 @@ class CircuitGraphTest(unittest.TestCase):
         self.assertTrue(set(graph.getInductiveEdges()) == inds)
         self.assertTrue(set(graph.getJosephsonEdges()) == jjs)
         self.assertTrue(set(graph.getCapacitiveEdges()) == caps)
+
+    def test_flux_biasing_rules(self):
+        graph = get_simple_test_graph()
+
+        # Can add a flux bias to a JJ branch without loading
+        graph.addFluxBias("I1", "Z1")
+
+        # Cannot add a flux bias again to the same JJ branch
+        self.assertRaises(ValueError, graph.addFluxBias, "I1", "Z1")
+
+        # Cannot use the same suffix twice
+        self.assertRaises(ValueError, graph.addFluxBias, "I2", "Z1")
+
+        # Can add a flux bias to the second JJ branch without loading
+        graph.addFluxBias("I2", "Z2")
+
+        graph = get_simple_test_graph()
+
+        # Cannot add a flux bias to a JJ branch with loading
+        self.assertRaises(TypeError, graph.addFluxBias, "I1", "Z1", "M1")
+
+        # Can add a flux bias to a inductive branch with loading
+        graph.addFluxBias("L", "Z", "M")
+
+    def test_charge_biasing_rules(self):
+        graph = get_simple_test_graph()
+
+        # Can add a charge bias to a node without loading
+        graph.addChargeBias(1, "XY")
+
+        # Cannot add a flux bias again to the same JJ branch
+        self.assertRaises(ValueError, graph.addChargeBias, 1, "XY")
+
+        # Cannot use the same suffix twice
+        # Note node 0 should be protected, as it currently always represents ground, however
+        # it isn't clear how to enforce that without inconvenience to the user at the moment.
+        self.assertRaises(ValueError, graph.addChargeBias, 0, "XY")

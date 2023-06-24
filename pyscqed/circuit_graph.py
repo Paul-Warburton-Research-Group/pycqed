@@ -197,6 +197,10 @@ class CircuitGraph:
                 raise TypeError("The selected edge %s is not inductive." % repr(edge))
 
         # Save it
+        if edge in self.flux_bias_edges:
+            raise ValueError("Component %s already has a flux bias term." % edge_component)
+        if suffix in [v["suffix"] for v in self.flux_bias_edges.values()]:
+            raise ValueError("The suffix %s is already in use." % suffix)
         self.flux_bias_edges[edge] = {
             "mutual_inductance": mutual_inductance,
             "suffix": suffix
@@ -221,6 +225,10 @@ class CircuitGraph:
             if coupling_capacitance in self.components_map.values():
                 raise ValueError("Component %s already exists. Change the name of the component." % coupling_capacitance)
 
+        if node in self.charge_bias_nodes:
+            raise ValueError("Node %i already has a charge bias term." % node)
+        if suffix in [v["suffix"] for v in self.charge_bias_nodes.values()]:
+            raise ValueError("The suffix %s is already in use." % suffix)
         self.charge_bias_nodes[node] = {
             "coupling_capacitance": coupling_capacitance,
             "suffix": suffix
