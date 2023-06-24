@@ -148,3 +148,38 @@ class CircuitGraphTest(unittest.TestCase):
         self.assertTrue(len(graph.closure_branches) == 3)
         self.assertTrue(len(graph.sc_loops) == 3)
         all_loops_are_unique(self, graph)
+
+        # Larger loops sharing a loop (3 in this case)
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(0, 1, "I2")
+        graph.addBranch(1, 2, "L1a")
+        graph.addBranch(2, 0, "L1b")
+        graph.addBranch(1, 3, "L2a")
+        graph.addBranch(3, 0, "L2b")
+        graph.addBranch(1, 4, "L3a")
+        graph.addBranch(4, 0, "L3b")
+        self.assertTrue(len(graph.closure_branches) == 4)
+        self.assertTrue(len(graph.sc_loops) == 4)
+        all_loops_are_unique(self, graph)
+
+    def test_component_listers(self):
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(0, 1, "C1")
+        graph.addBranch(0, 1, "I2")
+        graph.addBranch(0, 1, "C2")
+        graph.addBranch(1, 2, "L1a")
+        graph.addBranch(2, 0, "L1b")
+        graph.addBranch(1, 3, "L2a")
+        graph.addBranch(3, 0, "L2b")
+        graph.addBranch(1, 4, "L3a")
+        graph.addBranch(4, 0, "L3b")
+
+        inds = {"L1a", "L1b", "L2a", "L2b", "L3a", "L3b"}
+        jjs = {"I1", "I2"}
+        caps = {"C1", "C2"}
+
+        self.assertTrue(set(graph.getInductiveEdges()) == inds)
+        self.assertTrue(set(graph.getJosephsonEdges()) == jjs)
+        self.assertTrue(set(graph.getCapacitiveEdges()) == caps)
