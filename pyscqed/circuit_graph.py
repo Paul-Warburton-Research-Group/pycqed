@@ -168,8 +168,9 @@ class CircuitGraph:
     def addFluxBias(self, edge_component, suffix, mutual_inductance=None):
         """ Adds a flux bias term to the specified branch.
         """
-        # TODO: Check that edge belongs to a superconducting loop rather than an arbitrary conductive branch
         edge = self.getComponentEdge(edge_component)
+        if not self.isEdgeInSuperconductingLoop(edge):
+            raise TypeError("The component %s is not part of a superconducting loop." % edge_component)
         if type(suffix) is not str:
             raise TypeError("The 'suffix' parameter is not a string.")
         if len(suffix) > 8:
@@ -233,6 +234,17 @@ class CircuitGraph:
             "coupling_capacitance": coupling_capacitance,
             "suffix": suffix
         }
+
+    def isEdgeInSuperconductingLoop(self, edge):
+        """ Checks a branch is part of a superconducting loop.
+        """
+        if edge not in self.components_map:
+            raise ValueError("The specified edge %s was not found." % repr(edge))
+
+        for index, loop_edges in self.sc_loops.items():
+            if edge in loop_edges:
+                return True
+        return False
 
     def isCapacitiveEdge(self, edge):
         """ Checks a branch contains a capacitor.

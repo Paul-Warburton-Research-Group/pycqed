@@ -172,6 +172,20 @@ class CircuitGraphTest(unittest.TestCase):
         self.assertTrue(len(graph.sc_loops) == 4)
         all_loops_are_unique(self, graph)
 
+        # Larger loops sharing a large loop (2 in this case)
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "Lma")
+        graph.addBranch(1, 2, "Ima")
+        graph.addBranch(0, 3, "Lmb")
+        graph.addBranch(3, 2, "Imb")
+        graph.addBranch(0, 4, "I1a")
+        graph.addBranch(4, 2, "L1a")
+        graph.addBranch(0, 5, "I2a")
+        graph.addBranch(5, 2, "L2a")
+        self.assertTrue(len(graph.closure_branches) == 3)
+        self.assertTrue(len(graph.sc_loops) == 3)
+        all_loops_are_unique(self, graph)
+
     def test_component_listers(self):
         graph = CircuitGraph()
         graph.addBranch(0, 1, "I1")
@@ -222,10 +236,19 @@ class CircuitGraphTest(unittest.TestCase):
         # Can add a charge bias to a node without loading
         graph.addChargeBias(1, "XY")
 
-        # Cannot add a flux bias again to the same JJ branch
+        # Cannot add a charge bias again to the same node
         self.assertRaises(ValueError, graph.addChargeBias, 1, "XY")
 
         # Cannot use the same suffix twice
         # Note node 0 should be protected, as it currently always represents ground, however
         # it isn't clear how to enforce that without inconvenience to the user at the moment.
         self.assertRaises(ValueError, graph.addChargeBias, 0, "XY")
+
+    def test_flux_biasing_on_loops(self):
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(1, 2, "L1")
+        graph.addBranch(1, 2, "L2")
+
+        # Cannot add a flux bias to an element that is not part of a superconducting loop
+        self.assertRaises(TypeError, graph.addFluxBias, "I1", "Z1")
