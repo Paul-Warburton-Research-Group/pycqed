@@ -594,9 +594,6 @@ class ParamCollection:
 
         # Make edges from the names of included parameters
         for pname in names:
-            # Exclude name if it is a reexpression of an existing parameter
-            if pname == name:
-                continue
             graph.add_edge(pname, name)
 
         # Test that the graph is a DAG
@@ -661,7 +658,8 @@ class ParamCollection:
             expr = None
             for sym in base.free_symbols:
                 try:
-                    subs = {sym: self.getParametricExpression(self.getParameterFromSymbol(sym))}
+                    local_name = self.getParameterFromSymbol(sym)                        
+                    subs = {sym: self.getParametricExpression(local_name)}
                     expr = base.subs(subs)
                 except: # Fail should only be caused when parameter is not parameterised
                     continue
