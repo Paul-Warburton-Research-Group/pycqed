@@ -174,6 +174,12 @@ class ParamCollectionTest(unittest.TestCase):
         self.assertTrue(os.path.exists("./test1.dot"))
         os.remove("./test1.dot")  # Comment to visualize with `dot -Tsvg .\test.dot -o test.svg`
 
+    def test_parametric_reexpression(self):
+        pc = ParamCollection(self.names)
+        pc.getSymbols("a")
+        symbols = pc.getSymbolList()
+        pc.addParameterisation("L1", symbols["L1"] * symbols["a"])
+
     def test_parametric_expressions_numeric(self):
         pc = ParamCollection(self.names)
         pc.getSymbols("Ltot", "wweird")

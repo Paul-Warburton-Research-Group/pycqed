@@ -594,6 +594,9 @@ class ParamCollection:
 
         # Make edges from the names of included parameters
         for pname in names:
+            # Exclude name if it is a reexpression of an existing parameter
+            if pname == name:
+                continue
             graph.add_edge(pname, name)
 
         # Test that the graph is a DAG
