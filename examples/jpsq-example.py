@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -31,7 +31,8 @@ graph.addBranch(0, 1, "I1")
 graph.addBranch(1, 2, "C2")
 graph.addBranch(1, 2, "I2")
 graph.addBranch(0, 2, "L1")
-graph.addChargeBias(1, "Cg1")
+graph.addFluxBias("I2", "Z")
+graph.addChargeBias(1, "g", "Cg1")
 graph.drawGraphViz()
 
 circuit = SymbolicSystem(graph)
@@ -51,41 +52,41 @@ h.setParameterValues(
     'I2', Jc*Aj,
     'L1', 100.0,
     'Cg1', 0.0,
-    'phi21-1e', 0.0,
-    'Q1e', 0.0
+    'phiZ', 0.0,
+    'Qg', 0.0
 )
 
 h.newSweep()
-h.addSweep('phi21-1e', 0.0, 1.0, 101)
+h.addSweep('phiZ', 0.0, 1.0, 101)
 sweep = h.paramSweep(timesweep=True)
 
-x,sweep_p,v = h.getSweep(sweep,'phi21-1e',{})
+x,sweep_p,v = h.getSweep(sweep,'phiZ',{})
 for i in range(5):
     y = sweep_p[i] - sweep_p[0]
     plt.plot(x,y)
-plt.xlabel("$\\Phi_{21e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 h.setParameterValues(
-    'phi21-1e', 0.5,
-    'Q1e', 0.0
+    'phiZ', 0.5,
+    'Qg', 0.0
 )
 h.newSweep()
-h.addSweep('Q1e', 0.0, 1.0, 101)
+h.addSweep('Qg', 0.0, 1.0, 101)
 sweep = h.paramSweep(timesweep=True)
 
-x,sweep_q,v = h.getSweep(sweep,'Q1e',{})
+x,sweep_q,v = h.getSweep(sweep,'Qg',{})
 for i in range(5):
     y = sweep_q[i] - sweep_q[0]
     plt.plot(x,y)
-plt.xlabel("$Q_{1e}$ ($2e$)")
+plt.xlabel("$Q_g$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # In this device, a finite gate capacitance, that is required in a real device to induce an offset charge, actually lifts the interference effect to some extent. We can observe this by sweeping the capacitance:
 
 h.setParameterValues(
-    'phi21-1e', 0.5,
-    'Q1e', 0.5
+    'phiZ', 0.5,
+    'Qg', 0.5
 )
 h.newSweep()
 h.addSweep('Cg1', 0.0, 10.0, 101)
@@ -112,7 +113,8 @@ graph.addBranch(2, 3, "I3")
 graph.addBranch(0, 3, "C4")
 graph.addBranch(0, 3, "I4")
 graph.addBranch(1, 3, "Csh")
-graph.addChargeBias(2, "Cg2")
+graph.addFluxBias("I3", "Z")
+graph.addChargeBias(2, "g", "Cg2")
 graph.drawGraphViz()
 
 circuit = SymbolicSystem(graph)
@@ -144,8 +146,8 @@ h.setParameterValues(
     'I4',Jc*Aj,
     'Cg2',5.0,
     'Csh',100.0,
-    'phi32-1e',0.0,
-    'Q2e',0.0
+    'phiZ',0.0,
+    'Qg',0.0
 )
 
 H = h.getHamiltonian()
@@ -154,28 +156,28 @@ print ("Hamiltonian Sparsity: %f" % h.sparsity(H))
 # The sparsity is indeed very high thus a sparse eigensolver is justified, now we look at the required value of $\sigma$:
 
 # +
-h.setParameterValues('phi32-1e',0.5,'Q2e',0.0)
+h.setParameterValues('phiZ',0.5,'Qg',0.0)
 H = h.getHamiltonian()
 E = H.eigenenergies()
 print (E[0])
 print (E[1]-E[0])
 print()
 
-h.setParameterValues('phi32-1e',0.0,'Q2e',0.0)
+h.setParameterValues('phiZ',0.0,'Qg',0.0)
 H = h.getHamiltonian()
 E = H.eigenenergies()
 print (E[0])
 print (E[1]-E[0])
 print()
 
-h.setParameterValues('phi32-1e',0.5,'Q2e',0.5)
+h.setParameterValues('phiZ',0.5,'Qg',0.5)
 H = h.getHamiltonian()
 E = H.eigenenergies()
 print (E[0])
 print (E[1]-E[0])
 print()
 
-h.setParameterValues('phi32-1e',0.0,'Q2e',0.5)
+h.setParameterValues('phiZ',0.0,'Qg',0.5)
 H = h.getHamiltonian()
 E = H.eigenenergies()
 print (E[0])
@@ -188,8 +190,8 @@ print (E[1]-E[0])
 
 # +
 h.newSweep()
-h.addSweep('phi32-1e',0.0,1.0,101)
-h.setParameterValue('Q2e',0.0)
+h.addSweep('phiZ',0.0,1.0,101)
+h.setParameterValue('Qg',0.0)
 
 # Configure diagonalizer
 opts = {"sigma":-2777, "mode":"normal", "maxiter":None, "tol":0}
@@ -199,25 +201,25 @@ h.setDiagConfig(sparse=True, sparsesolveropts=opts)
 sweep = h.paramSweep(timesweep=True)
 # -
 
-x,sweep_p,v = h.getSweep(sweep,'phi32-1e',{})
+x,sweep_p,v = h.getSweep(sweep,'phiZ',{})
 for i in range(5):
     y = sweep_p[i] - sweep_p[0]
     plt.plot(x,y)
-plt.xlabel("$\\Phi_{32e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now let's look at the spectra when there is half a Cooper-pair's worth of offset charge on the island:
 
 h.newSweep()
-h.addSweep('phi32-1e', 0.0, 1.0, 101)
-h.setParameterValue('Q2e', 0.5)
+h.addSweep('phiZ', 0.0, 1.0, 101)
+h.setParameterValue('Qg', 0.5)
 sweep = h.paramSweep(timesweep=True)
 
-x, sweep_p, v = h.getSweep(sweep, 'phi32-1e', {})
+x, sweep_p, v = h.getSweep(sweep, 'phiZ', {})
 for i in range(5):
     y = sweep_p[i] - sweep_p[0]
     plt.plot(x, y)
-plt.xlabel("$\\Phi_{32e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # ### Charge Dependence of the Energy
@@ -225,15 +227,15 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 # Now we sweep the charge offset applied to the island:
 
 h.newSweep()
-h.addSweep('Q2e', 0.0, 1.0, 101)
-h.setParameterValue('phi32-1e', 0.5)
+h.addSweep('Qg', 0.0, 1.0, 101)
+h.setParameterValue('phiZ', 0.5)
 sweep = h.paramSweep(timesweep=True)
 
-x, sweep_q, v = h.getSweep(sweep, 'Q2e', {})
+x, sweep_q, v = h.getSweep(sweep, 'Qg', {})
 for i in range(3):
     y = sweep_q[i] - sweep_q[0]
     plt.plot(x, y)
-plt.xlabel("$Q_{2e}$ ($2e$)")
+plt.xlabel("$Q_g$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # ### Island Self-Capacitance
@@ -242,7 +244,7 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 h.newSweep()
 h.addSweep('Cg2', 0.0, 100.0, 101)
-h.setParameterValues('phi32-1e', 0.5, 'Q2e', 0.0)
+h.setParameterValues('phiZ', 0.5, 'Qg', 0.0)
 sweep = h.paramSweep(timesweep=True)
 
 x,sweep_c,v = h.getSweep(sweep,'Cg2',{})
@@ -258,7 +260,7 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 h.newSweep()
 h.addSweep('Csh', 0.0, 100.0, 101)
-h.setParameterValues('phi32-1e', 0.5, 'Q2e', 0.0, 'Cg2', 20.0)
+h.setParameterValues('phiZ', 0.5, 'Qg', 0.0, 'Cg2', 20.0)
 sweep = h.paramSweep(timesweep=True)
 
 x,sweep_c,v = h.getSweep(sweep,'Csh',{})

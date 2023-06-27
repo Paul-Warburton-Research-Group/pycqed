@@ -45,36 +45,35 @@ class Param:
     :ivar symbol: A `sympy` symbol for the parameter.
     :ivar sweep: The sweep array.
     """
-    __types = ["type1", "type2"]
     __valid_scalar_types = [int, float, np.float64]
     
     def __init__(self, name, value=None, bounds=[-np.inf, np.inf], unit_pref=1.0):
         """Constructor method."""
         # Ensure name is a string and it has the correct format
         if type(name) is not str:
-            raise Exception("'name' is not a string.")
+            raise TypeError("'name' is not a string.")
         if name.find(' ') >= 0:
-            raise Exception("'name' should not have any whitespace characters.")
+            raise ValueError("'name' should not have any whitespace characters.")
         # Ensure value is a float if it is not None
         if value is not None:
             if type(value) not in self.__valid_scalar_types:
-                raise Exception("'value' is not a float.")
+                raise TypeError("'value' is not a float.")
         # Ensure bounds is a list of two floats
         if type(bounds) is not list:
-            raise Exception("'bounds' is not a list.")
+            raise TypeError("'bounds' is not a list.")
         else:
             if len(bounds) != 2:
-                raise Exception("'bounds' should only have two values, %i found." % len(bounds))
+                raise TypeError("'bounds' should only have two values, %i found." % len(bounds))
             if (type(bounds[0]) is not float or type(bounds[1]) is not float) and (type(bounds[0]) is not int or type(bounds[1]) is not int):
-                raise Exception("'bounds' should contain floats.")
+                raise TypeError("'bounds' should contain floats.")
         # Ensure lower bound is smaller than upper bound
         if bounds[0] > bounds[1]:
-            raise Exception("Lower bound is greater than upper bound in 'bounds'.")
+            raise ValueError("Lower bound is greater than upper bound in 'bounds'.")
         # Ensure unit pref is a float and is positive
         if type(unit_pref) not in self.__valid_scalar_types:
-            raise Exception("'unit_pref' is not a float.")
+            raise TypeError("'unit_pref' is not a float.")
         if float(unit_pref) < 0.0:
-            raise Exception("'unit_pref' is negative.")
+            raise ValueError("'unit_pref' is negative.")
         
         
         self.name = name
@@ -88,6 +87,7 @@ class Param:
         self.__upref = float(unit_pref)
         self.name_latex = t2l.latexify_param_name(self.name)
         self.sweep = np.array([])
+        self.N = 0
     
     def getValue(self):
         """ Get the current value of the parameter.
@@ -109,13 +109,13 @@ class Param:
         """
         # Ensure value is a float
         if type(value) not in self.__valid_scalar_types:
-            raise Exception("'value' is not a float.")
+            raise TypeError("'value' is not a float.")
         
         # Check bounds
-        if float(value) > self.__upper_bound:
-            raise Exception("Param %s 'value' exceeds specified upper bound." % (self.name))
-        if float(value) < self.__lower_bound:
-            raise Exception("Param %s 'value' exceeds specified lower bound." % (self.name))
+        if float(value) >= self.__upper_bound:
+            raise ValueError("Param %s 'value' exceeds specified upper bound." % (self.name))
+        if float(value) <= self.__lower_bound:
+            raise ValueError("Param %s 'value' exceeds specified lower bound." % (self.name))
         self.__value = float(value)
     
     def getBounds(self):
@@ -124,7 +124,7 @@ class Param:
         :return: The lower and upper bounds of the parameter.
         :rtype: list of two floats
         """
-        return [self._lower_bound, self.__upper_bound]
+        return [self.__lower_bound, self.__upper_bound]
     
     def setBounds(self, bounds):
         """ Set the bounds of the parameter.
@@ -138,15 +138,15 @@ class Param:
         """
         # Ensure bounds is a list of two floats
         if type(bounds) is not list:
-            raise Exception("'bounds' is not a list.")
+            raise TypeError("'bounds' is not a list.")
         else:
             if len(bounds) != 2:
-                raise Exception("'bounds' should only have two values, %i found." % len(bounds))
+                raise ValueError("'bounds' should only have two values, %i found." % len(bounds))
             if (type(bounds[0]) is not float or type(bounds[1]) is not float) and (type(bounds[0]) is not int or type(bounds[1]) is not int):
-                raise Exception("'bounds' should contain floats.")
+                raise TypeError("'bounds' should contain floats.")
         # Ensure lower bound is smaller than upper bound
         if bounds[0] > bounds[1]:
-            raise Exception("Lower bound is greater than upper bound in 'bounds'.")
+            raise ValueError("Lower bound is greater than upper bound in 'bounds'.")
         
         self.__lower_bound = float(bounds[0])
         self.__upper_bound = float(bounds[1])
@@ -169,24 +169,24 @@ class Param:
         :rtype: numpy.ndarray
         """
         # Ensure start is a float
-        if type(start) is not float and type(start) is not int:
-            raise Exception("'start' is not a float.")
+        if type(start) not in self.__valid_scalar_types:
+            raise TypeError("'start' is not a float.")
         # Ensure end is a float
-        if type(end) is not float and type(end) is not int:
-            raise Exception("'end' is not a float.")
+        if type(end) not in self.__valid_scalar_types:
+            raise TypeError("'end' is not a float.")
         # Ensure N is an int
         if type(N) is not int:
-            raise Exception("'N' is not an int.")
+            raise TypeError("'N' is not an int.")
         
         # Check bounds
         if float(start) > self.__upper_bound:
-            raise Exception("Param %s 'start' exceeds specified upper bound." % (self.name))
+            raise ValueError("Param %s 'start' exceeds specified upper bound." % (self.name))
         if float(start) < self.__lower_bound:
-            raise Exception("Param %s 'start' exceeds specified lower bound." % (self.name))
+            raise ValueError("Param %s 'start' exceeds specified lower bound." % (self.name))
         if float(end) > self.__upper_bound:
-            raise Exception("Param %s 'end' exceeds specified upper bound." % (self.name))
+            raise ValueError("Param %s 'end' exceeds specified upper bound." % (self.name))
         if float(end) < self.__lower_bound:
-            raise Exception("Param %s 'end' exceeds specified lower bound." % (self.name))
+            raise ValueError("Param %s 'end' exceeds specified lower bound." % (self.name))
         
         self.sweep = np.linspace(float(start), float(end), N)
         self.N = N
@@ -224,6 +224,7 @@ class ParamCollection:
         for name in names:
             self.__collection[name] = Param(name)
             self.__symbol_map[name] = self.__collection[name].symbol
+            self.__parameterisation_graph.add_node(name)
     
     ###################################################################################################################
     #       Basic Parameter Manipulation Functions
@@ -259,7 +260,7 @@ class ParamCollection:
         :rtype: sympy.Symbol
         """
         if type(name) != str:
-            raise Exception("Parameter name %s is not a string." % repr(name))
+            raise TypeError("Parameter name %s is not a string." % repr(name))
         return self.__symbol_map[name]
     
     def getParameterValuesDict(self):
@@ -292,17 +293,18 @@ class ParamCollection:
         :return: None
         """
         if type(name) != str:
-            raise Exception("Parameter name %s is not a string." % repr(name))
+            raise TypeError("Parameter name %s is not a string." % repr(name))
         
         if symbol_override is not None:
             if type(symbol_override) != sy.Symbol:
-                raise Exception("Symbol %s is not a sympy.Symbol instance." % repr(symbol_override))
+                raise TypeError("Symbol %s is not a sympy.Symbol instance." % repr(symbol_override))
         
         if name not in list(self.__collection.keys()):
             self.__collection[name] = Param(name)
             if symbol_override is not None:
                 self.__collection[name].symbol = symbol_override
             self.__symbol_map[name] = self.__collection[name].symbol
+            self.__parameterisation_graph.add_node(name)
     
     def addParameters(self, *names):
         """ Adds multiple new parameters to the collection if they do not already exist. If some or all exist, nothing is reported.
@@ -326,7 +328,7 @@ class ParamCollection:
         :return: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         else:
             del self.__collection[name]
             del self.__symbol_map[name]
@@ -356,7 +358,7 @@ class ParamCollection:
         :rtype: str
         """
         if symbol not in self.__symbol_map.values():
-            raise Exception("Symbol '%s' was not found." % repr(symbol))
+            raise ValueError("Symbol '%s' was not found." % repr(symbol))
         for k, v in self.__symbol_map.items():
             if symbol == v:
                 return k
@@ -376,7 +378,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in self.__collection.keys():
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         # Don't update the value if this parameter is parameterised by others
         if name in self.__parameterisation.keys():
@@ -400,7 +402,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         return self.__collection[name].getValue()
     
@@ -417,7 +419,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         return self.__collection[name].sweep
     
     def getParameterLatexName(self, name):
@@ -433,7 +435,7 @@ class ParamCollection:
         """
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         return self.__collection[name].name_latex
     
     def setParameterValues(self, *name_value_pairs):
@@ -448,7 +450,7 @@ class ParamCollection:
         """
         if len(list(name_value_pairs)) == 1:
             if type(name_value_pairs[0]) is not dict:
-                raise Exception("Argument should be a dictionary, not '%s'." % repr(type(name_value_pairs[0])))
+                raise TypeError("Argument should be a dictionary, not '%s'." % repr(type(name_value_pairs[0])))
             #for k,v in name_value_pairs[0].items():
             #    self.__collection[k].setValue(v)
             #return
@@ -465,12 +467,12 @@ class ParamCollection:
         
         # Check there are as many parameters as values
         if len(keys) != len(values):
-            raise Exception("'name_value_pairs' definition invalid.")
+            raise ValueError("'name_value_pairs' definition invalid.")
         
         for i, name in enumerate(keys):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             if name in self.__parameterisation.keys():
                 print("Warning: Parameter %s is parameterised so it will not be set to the requested value." % name)
                 continue
@@ -492,7 +494,7 @@ class ParamCollection:
         for name in list(names):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             values[name] = self.__collection[name].getValue()
         return values
     
@@ -511,7 +513,7 @@ class ParamCollection:
         for name in list(names):
             # Check name is defined
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             values[self.__symbol_map[name]] = self.__collection[name].getValue()
         return values
     
@@ -549,7 +551,7 @@ class ParamCollection:
         for i, name in enumerate(list(names)):
             # Check name is defined
             if type(name) != str:
-                raise Exception("Parameter name %s is not a string." % repr(name))
+                raise TypeError("Parameter name %s is not a string." % repr(name))
             self.addParameter(name, symbol_override=symbol_overrides[i])
             values[name] = self.__symbol_map[name]
         return values
@@ -561,57 +563,49 @@ class ParamCollection:
         :rtype: list
         """
         return list(self.__parameterisation.keys())
-    
+
     def addParameterisation(self, name, expression):
         """ Registers a parameterisation of the parameter `name` in terms of symbols returned by :func:`getSymbols`. It is allowed to use `sympy` functions such as `sympy.cos` in expressions, and also any previously defined parameters. If the parameterisation already exists, it is overwritten.
-        
+
         :param name: The name of the parameter that is being parameterised.
         :type name: str
-        
+
         :param expression: A `sympy` expression in terms of other parameters.
         :type expression: float, int, variable
         
         :raises Exception: If the argument types are incorrect, ill-formatted, not found, or out of bounds. Also raises an exception if this parameterisation would cause a cycle in the dependency tree of nested parameterisations.
-        
+
         :return: None
         :rtype: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
-        
+            raise ValueError("'%s' parameter was not found." % name)
+
         # Check the symbols in expression are actually all registered and get their names
         names = []
         rev_map = {v: k for k, v in self.__symbol_map.items()}
         for sym in expression.free_symbols:
             if sym not in self.getSymbolList().values():
-                raise Exception("Symbol '%s' not registered." % repr(sym))
+                raise ValueError("Symbol '%s' not registered." % repr(sym))
             names.append(rev_map[sym])
-        
+
+        # Make temp copy of graph
+        graph = self.__parameterisation_graph.copy()
+
+        # Make edges from the names of included parameters
         for pname in names:
-            # Add an edge to the graph if this parameterisation depends on others
-            if pname in self.__parameterisation.keys():
-                self.__parameterisation_graph.add_edge(pname, name)
-        
-        # Check that there are no cycles induced by this parameterisation
-        cycles = None
-        try:
-            cycles = nx.find_cycle(self.__parameterisation_graph, orientation="original")
-        except nx.NetworkXNoCycle:
-            pass
-        if cycles is not None:
-            # Remove the bad edges
-            for pname in names:
-                if pname in self.__parameterisation.keys():
-                    self.__parameterisation_graph.remove_edge(pname, name)
-            raise Exception("Cycle(s) found in parameterisation graph upon addition of name '%s': %s" % (name, repr(cycles)))
-        
+            graph.add_edge(pname, name)
+
+        # Test that the graph is a DAG
+        assert nx.is_directed_acyclic_graph(graph), "A cyclic dependency was detected with this parameterisation."
+
         # Register the parameterisation
-        self.__parameterisation_graph.add_node(name)
         self.__parameterisation[name] = {
             "expression": expression,
             "parameters": names
         }
-    
+        self.__parameterisation_graph = graph
+
     def addParameterisationPrefactor(self, name, prefactor):
         """ Add a prefactor to a parameterisation expression. This is mechanism for implementing unit conversion between parameters if required.
         
@@ -627,7 +621,7 @@ class ParamCollection:
         :rtype: None
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         self.__parameterisation[name]["expression"] *= prefactor
     
     def getParametricExpression(self, name, expand=False):
@@ -645,7 +639,7 @@ class ParamCollection:
         :rtype: sympy type
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         if not expand:
             return self.__parameterisation[name]["expression"]
         
@@ -664,7 +658,8 @@ class ParamCollection:
             expr = None
             for sym in base.free_symbols:
                 try:
-                    subs = {sym: self.getParametricExpression(self.getParameterFromSymbol(sym))}
+                    local_name = self.getParameterFromSymbol(sym)                        
+                    subs = {sym: self.getParametricExpression(local_name)}
                     expr = base.subs(subs)
                 except: # Fail should only be caused when parameter is not parameterised
                     continue
@@ -683,7 +678,7 @@ class ParamCollection:
         :rtype: list
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         
         return self.__parameterisation[name]["parameters"]
     
@@ -699,16 +694,18 @@ class ParamCollection:
         :rtype: None
         """
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter is not parameterised." % name)
+            raise ValueError("'%s' parameter is not parameterised." % name)
         
         
         # If we want to remove the associated parameters, we'll also need to check they can actually be removed without breaking everything
         #for sname in self.__parameterisation[name]["parameters"]:
         #    del self.__collection[sname]
-        self.__parameterisation_graph.remove_node(name)
+        names = self.__parameterisation[name]["parameters"]
+        for pname in names:
+            self.__parameterisation_graph.remove_edge(pname, name)
         del self.__parameterisation[name]
     
     def parameterisationParametersSet(self, name):
@@ -723,7 +720,7 @@ class ParamCollection:
         :rtype: bool
         """
         if name not in list(self.__parameterisation.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         names = self.__parameterisation[name]['parameters']
         if None in self.getParameterValues(*names).values():
@@ -744,7 +741,7 @@ class ParamCollection:
         pnames = []
         for name in list(names):
             if name not in list(self.__collection.keys()):
-                raise Exception("'%s' parameter was not found." % name)
+                raise ValueError("'%s' parameter was not found." % name)
             
             # FIXME: Parameterisations can depend on others
             if name in list(self.__parameterisation.keys()):
@@ -761,11 +758,11 @@ class ParamCollection:
         pd_graph = nx.nx_pydot.to_pydot(self.__parameterisation_graph)
         
         # Compile the graphviz source
-        gv_graph = gv.Source(pd_graph.create(format='dot').decode('utf8'))
-        
-        # Return the object, which should be rendered in a jupyter notebook
-        if filename is None:
-            return gv_graph
+        src = pd_graph.create(format='dot').decode('utf8')
+        if filename is not None:
+            with open(filename, "w") as fd:
+                fd.write(src)
+        return gv.Source(src)
     
     ###################################################################################################################
     #       Parameter Sweeping Functions
@@ -787,11 +784,11 @@ class ParamCollection:
         """
         # Ensure name is a string
         if type(name) is not str:
-            raise Exception("'name' is not a string.")
+            raise TypeError("'name' is not a string.")
         
         # Check name is defined
         if name not in list(self.__collection.keys()):
-            raise Exception("'%s' parameter was not found." % name)
+            raise ValueError("'%s' parameter was not found." % name)
         
         swp = list(sweep_params)
         return {
@@ -1036,7 +1033,7 @@ class ParamCollection:
                 # Determine if data is keyed
                 if type(util.pickleRead(data[0])) == dict:
                     if key is None:
-                        raise Exception("'key' optional parameter should be specified for 'data' of type dict (in temporary files).")
+                        raise TypeError("'key' optional parameter should be specified for 'data' of type dict (in temporary files).")
                 else:
                     key = None
                 
@@ -1044,7 +1041,7 @@ class ParamCollection:
             
             # Extract the keyed data
             if key is None:
-                raise Exception("'key' optional parameter should be specified for 'data' of type dict.")
+                raise ValueError("'key' optional parameter should be specified for 'data' of type dict.")
             data = data[key]
             
             if type(data[0]) in [str, bytes, os.PathLike]:
@@ -1053,12 +1050,12 @@ class ParamCollection:
         if type(ind_var) is str:
             # Check the independent variable exists
             if ind_var not in self.getParameterNamesList():
-                raise Exception("Independent variable '%s' does not exist." % ind_var)
+                raise ValueError("Independent variable '%s' does not exist." % ind_var)
             
             # Check the static variables exist
             for k in static_vars.keys():
                 if k not in self.getParameterNamesList():
-                    raise Exception("Static variable '%s' does not exist." % k)
+                    raise ValueError("Static variable '%s' does not exist." % k)
             
             if len(self.sweep_spec) == 1:
                 if not using_tmp_files:
@@ -1111,12 +1108,12 @@ class ParamCollection:
             # Check the independent variables exist
             for k in ind_var:
                 if k not in self.getParameterNamesList():
-                    raise Exception("Independent variable '%s' does not exist." % k)
+                    raise ValueError("Independent variable '%s' does not exist." % k)
             
             # Check the static variables exist
             for k in static_vars.keys():
                 if k not in self.getParameterNamesList():
-                    raise Exception("Static variable '%s' does not exist." % k)
+                    raise ValueError("Static variable '%s' does not exist." % k)
             
             # Get the indices of the parameters in the sweep specification
             # and the length of the data arrays
@@ -1166,7 +1163,7 @@ class ParamCollection:
                     shape = np.array(util.pickleRead(data[self.collapsedIndices(*l)])[key]).shape
                     return [self.getParameterSweep(iv) for iv in ind_var], np.array([util.pickleRead(f)[key] for f in res]).reshape(*[Ns[iv] for iv in ind_var],*shape).T, static_vals
         else:
-            raise Exception("Invalid independent variable specification. Found type '%s'" % repr(type(ind_var)))
+            raise TypeError("Invalid independent variable specification. Found type '%s'" % repr(type(ind_var)))
     
     ###################################################################################################################
     #       Internal
@@ -1208,66 +1205,36 @@ class ParamCollection:
         self.__parameterisation_graph = data[3]
     
     def _update_parameterisations(self):
-        
         checked_nodes = set()
         checked_edges = set()
         G = self.__parameterisation_graph
         all_nodes = set(G.nodes)
         all_edges = set(G.edges)
-        
-        # Start with the nodes that have no in_degree (independent parameterisations)
-        names = [node for node in all_nodes if G.in_degree[node] == 0]
-        for name in names:
-            params = self.__parameterisation[name]
-            subs = self.getSymbolValues(*params['parameters'])
-            #print(params['expression'])
-            #print(subs)
-            #print(params['expression'].subs(subs))
-            synum = params['expression'].subs(subs)
-            num = float(synum)
-            self.__collection[name].setValue(num)
-            checked_nodes.add(name)
-        if checked_nodes == all_nodes:
-            #print("All nodes checked")
-            return
-        
-        # Now we need to iterate until all nodes are accounted for
-        while checked_edges != all_edges:# and not self.allParametersSet():
-            # Get the next set of names to check
-            new_names = []
-            for name in names:
-                edges = G.out_edges(name)
-                new_names.extend([edge[1] for edge in edges])
-                checked_edges |= set(edges)
-            
-            # Perform the update
-            for name in new_names:
-                params = self.__parameterisation[name]
-                subs = self.getSymbolValues(*params['parameters'])
-                #print(params['expression'])
-                #print(subs)
-                #print(params['expression'].subs(subs))
-                synum = params['expression'].subs(subs)
-                num = float(synum)
-                self.__collection[name].setValue(num)
-            
-            names = new_names.copy()
-        
-        #try:
-        #    for k, v in self.__parameterisation.items():
-        #        subs = self.getSymbolValues(*v['parameters'])
-        #        self.__collection[k].setValue(float(v['expression'].subs(subs)))
-        #except:
-        #    pass
 
+        # Start with the nodes that have no in_degree, i.e. that are independent,
+        # and get all the descendant paths.
+        paths = {node: nx.descendants(G, node) for node in all_nodes if G.in_degree[node] == 0}
 
+        # Get the parameters that need to have all values substituted
+        dependent_nodes = all_nodes - set(paths)
 
+        # For each path, update the substitutions using the independent parameters
+        dependent_node_values = {k: None for k in dependent_nodes}
+        for independent_node, path in paths.items():
+            symbol = self.getSymbol(independent_node)
+            value = self.getParameterValue(independent_node)
+            if value is None:
+                continue
+            for dependent_node in path:
+                if dependent_node_values[dependent_node] is None:
+                    expression = self.getParametricExpression(dependent_node, expand=True)
+                else:
+                    expression = dependent_node_values[dependent_node]
+                dependent_node_values[dependent_node] = expression.subs({symbol: value})
 
-
-
-
-
-
-
-
-
+        # Update all the dependent parameter values we can
+        for k, v in dependent_node_values.items():
+            try:
+                self.__collection[k].setValue(float(v))
+            except:
+                continue

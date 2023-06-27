@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -28,6 +28,7 @@ graph = CircuitGraph()
 graph.addBranch(0, 1, "C")
 graph.addBranch(0, 1, "L")
 graph.addBranch(0, 1, "I")
+graph.addFluxBias("I", "Z")
 graph.drawGraphViz("SCGraph")
 
 # To couple a resonator capacitively to the system we only need to indicate this to the graph structure using:
@@ -72,7 +73,7 @@ hamil.setDiagConfig(get_vectors=True, eigvalues=20)
 # +
 # Configure the parameter sweep
 hamil.newSweep()
-hamil.addSweep('phi10-2e', 0.49, 0.51, 401)
+hamil.addSweep('phiZ', 0.49, 0.51, 401)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian')
@@ -92,7 +93,7 @@ hamil.setParameterValues(
     'L', L,
     'C', Ca*Aj,
     'I', Jc*Aj,
-    'phi10-2e', 0.5,
+    'phiZ', 0.5,
     'f1r', 7.9,
     'Z1r', 50.0,
     'Cc', 0.5
@@ -105,14 +106,14 @@ sweep = hamil.paramSweep(timesweep=True)
 
 # The `getResonatorResponse` function returns the full set of dressed qubit eigenvalues for each number of resonator photons specified. The default is 100, and this can be set as keyword arguments passed to the `evalSpec` entry of for `getResonatorResponse`. Let's first look at the spectrum of the bare capacitively loaded RF-SQUID:
 
-x,EV,v = hamil.getSweep(sweep, 'phi10-2e', {}, evaluable='Hamiltonian')
+x,EV,v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Hamiltonian')
 E = EV[:, 0]
 V = EV[:, 1]
 
 for i in range(3):
     y = E[i] - E[0]
     plt.plot(x,y,ls="-")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # ### Resonator Parameters
@@ -144,13 +145,13 @@ hamil.getParameterValue('L1r')
 #
 # Now let's look at the dressed (Lamb shifted) spectrum of the capacitively loaded RF-SQUID, which can be extracted using the `getCircuitLambShift` utility function:
 
-x, Erwa, v = hamil.getSweep(sweep, 'phi10-2e', {}, evaluable='Resonator')
+x, Erwa, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Resonator')
 Edressed = util.getCircuitLambShift(Erwa)
 
 for i in range(3):
     y = Edressed[i]
     plt.plot(x, y, ls="-")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Because the coupling here is small compared to the total Hamiltonian, we cannot easily see the avoided crossing region where the qubit energy crosses the resonator resonant frequency. We can more easily see this by focusing in that region:
@@ -162,7 +163,7 @@ fr = hamil.getParameterValue('f1rl')
 #
 plt.plot(x, Edressed[1], "C1-", label="First Gap")
 plt.plot([x[0], x[-1]], [fr, fr], "k--", label="Resonator")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.xlim(0.4984, 0.499)
 plt.ylim(7.5, 8.5)
@@ -174,7 +175,7 @@ plt.legend()
 for i in range(3):
     y = (Edressed[i] - (E[i] - E[0]))*1e3
     plt.plot(x,y,ls="-")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\Delta E_{g,i}$ (MHz)")
 
 # ### Resonator Shift
@@ -185,7 +186,7 @@ Eres = util.getResonatorShift(Erwa)
 
 plt.plot(x, Eres[0,0])
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
 
 # As expected we see the resonator shift change sign in the region where the qubit energy is less than the resonator frequency. The shift near half flux is on the order of a MHz.
@@ -196,14 +197,14 @@ plt.plot(x, Eres[0,0], label="Gnd State")
 plt.plot(x, Eres[1,0], label="Ex State 1")
 plt.plot(x, Eres[2,0], label="Ex State 2")
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
 
 # We can plot the change in frequency when the qubit goes from the ground state to the first and second excited states by taking the difference with the ground state resonator modulation curve:
 
 plt.plot(x, (Eres[1,0]-Eres[0,0])*1e3, "C1-", label="0 -> 1")
 plt.plot(x, (Eres[2,0]-Eres[0,0])*1e3, "C2-", label="0 -> 2")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\Delta\omega_{r}$ (MHz)")
 plt.ylim(-50, 50)
 plt.legend()
@@ -257,6 +258,7 @@ graph.addBranch(0, 1, "I")
 graph.addBranch(0, 2, "C1r")
 graph.addBranch(0, 2, "L1r")
 graph.addBranch(1, 2, "Cc")
+graph.addFluxBias("I", "Z")
 
 circuit = SymbolicSystem(graph)
 circuit.getInverseCapacitanceMatrix()
@@ -279,7 +281,7 @@ hamilf.setParameterValues(
     'L', L,
     'C', Ca*Aj,
     'I', Jc*Aj,
-    'phi10-2e', 0.5,
+    'phiZ', 0.5,
     'C1r', hamil.getParameterValue("C1r"),
     'L1r', hamil.getParameterValue("L1r"),
     'Cc', 0.5
@@ -287,16 +289,16 @@ hamilf.setParameterValues(
 # -
 
 hamilf.newSweep()
-hamilf.addSweep('phi10-2e', 0.4984, 0.4988, 101)
+hamilf.addSweep('phiZ', 0.4984, 0.4988, 101)
 hamilf.setDiagConfig(eigvalues=20)
 sweep = hamilf.paramSweep(timesweep=True)
 
 # We will compare the full spectrum to the reconstructed dressed states of the loaded system:
 
-x, Efull, v = hamilf.getSweep(sweep, 'phi10-2e', {})
+x, Efull, v = hamilf.getSweep(sweep, 'phiZ', {})
 for i in range(10):
     plt.plot(x, Efull[i]-Efull[0])
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # We see the level structure is actually very confusing when solved this way. It is very difficult to tell from this spectrum which level is associated with which qubit state and photon number, particularly at higher energy states. Thus it is very difficult to extract quantities useful to qubit characterisation such as the Lamb and AC Stark shift of the qubit and the resonator.
@@ -306,12 +308,12 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 # +
 # Configure the items to be evaluated on the previous system
 hamil.newSweep()
-hamil.addSweep('phi10-2e', 0.4984, 0.4988, 101)
+hamil.addSweep('phiZ', 0.4984, 0.4988, 101)
 hamil.addEvaluation('Hamiltonian')
 hamil.addEvaluation('Resonator', cpl_node=1)
 
 sweep = hamil.paramSweep(timesweep=True)
-x, Erwa, v = hamil.getSweep(sweep, 'phi10-2e', {}, evaluable='Resonator')
+x, Erwa, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Resonator')
 Edressed = util.getCircuitLambShift(Erwa)
 # -
 
@@ -319,7 +321,7 @@ plt.plot(x,Efull[1]-Efull[0],"k-")
 plt.plot(x,Efull[2]-Efull[0],"k-",label="Qubit-Resonator")
 plt.plot(x,Edressed[1],"rx",label="First Gap, RWA")
 plt.plot([x[0], x[-1]], [fr, fr],"k--",label="Bare Resonator")
-plt.xlabel("$\\Phi_{10e}$ ($\\Phi_0$)")
+plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 #plt.xlim(0.4976,0.498)
 plt.ylim(7.5,8.5)

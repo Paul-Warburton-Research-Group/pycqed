@@ -9,7 +9,7 @@ if platform.system() == 'Windows':
     os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
 
 class CircuitGraph:
-    
+
     # Prefixes for the circuit elements
     _element_prefixes = [
         "C", # Capacitor
@@ -18,13 +18,13 @@ class CircuitGraph:
         "V", # Phase-slip nanowire
         "M"  # Mutual inductance
     ]
-    
+
     _resonator_prefixes = [
         "f", # Resonant frequency
         "Z", # Resonator impedance
         "g"  # Coupling term
     ]
-    
+
     # Different subgraphs
     _subgraphs = [
         "Circuit",
@@ -33,116 +33,116 @@ class CircuitGraph:
         "SCGraph",
         "Loop"
     ]
-    
+
     def __init__(self, circuit_name=""):
+        """ Abstract description of a superconducting circuit.
         """
-        """
-        
+
         # Components associated with each branch
         self.components_map = {}
-        
+
         # Charge bias associated with node
         self.charge_bias_nodes = {}
-        
+
         # Flux bias associated with each loop
         self.flux_bias_edges = {}
-        
+
         # All circuit loops map
         self.loops_map = {}
-        
+
         # Edges shared between loops
         self.loop_adjacency_map = {}
-        
+
         # Capacitively-coupled resonators
         self.resonators_cap = {}
-        
+
         # Mutually coupled branches
         self.coupled_branches = {}
-        
+
         # General undirected circuit graph
         self.circuit_graph = nx.MultiGraph(circuit_name=circuit_name)
-        
+
     def addBranch(self, n1, n2, component):
+        """ Adds a branch between two circuit nodes that contains a single component.
         """
-        """
-        
+
         # Check there are no mutual inductors specified
         if component[0] == self._element_prefixes[4]:
-            raise Exception("Cannot add a mutual inductance to a circuit branch.")
-        
+            raise TypeError("Cannot add a mutual inductance to a circuit branch.")
+
         # Check the symbol is correct
         if component[0] not in self._element_prefixes:
-            raise Exception("Invalid component symbol '%s', it should be one of %s." % (component[0], repr(self._element_prefixes)))
-        
+            raise ValueError("Invalid component symbol '%s', it should be one of %s." % (component[0], repr(self._element_prefixes)))
+
         # Add the branch
         k = self.circuit_graph.add_edge(n1, n2, component=component, label=component)
-        
+
         # Update
         self._update_components_map()
         self._update_graphs()
         self._update_couplings_map((n1, n2, k))
-    
+
     def coupleBranchesInductively(self, edge1, edge2, component):
-        """
+        """ Couples two branches inductively.
         """
         alt_edge1 = (edge1[1], edge1[0], edge1[2])
         alt_edge2 = (edge2[1], edge2[0], edge2[2])
-        
+
         if edge1 not in self.sc_spanning_tree_wc.edges and alt_edge1 not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge1))
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge1))
         if edge2 not in self.sc_spanning_tree_wc.edges and alt_edge2 not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge2))
-        
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge2))
+
         edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
         edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
-        
+
         # Check the edges are inductive
         if self.isInductiveEdge(edge1) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge1))
+            raise TypeError("The selected edge %s is not inductive." % repr(edge1))
         if self.isInductiveEdge(edge2) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge2))
-        
+            raise TypeError("The selected edge %s is not inductive." % repr(edge2))
+
         # Ensure component is a mutual inductance
         if component[0] != self._element_prefixes[4]:
-            raise Exception("Branch coupling component must be a mutual inductance.")
-        
+            raise TypeError("Branch coupling component must be a mutual inductance.")
+
         self.coupled_branches[component] = (edge1, edge2)
-    
+
     def coupleResonatorCapacitively(self, node, component):
-        """
+        """ Couples a linear resonator capacitively.
         """
         if node not in self.circuit_graph.nodes:
-            raise Exception("Node %i not part of the circuit graph." % node)
-        
+            raise ValueError("Node %i not part of the circuit graph." % node)
+
         if node == 0:
-            raise Exception("Cannot couple a resonator to the ground node of the circuit")
-        
+            raise ValueError("Cannot couple a resonator to the ground node of the circuit")
+
         if self.resonators_cap[node] is not None:
-            raise Exception("Node %i already has a resonator coupled to it (only one per node supported currently)." % node)
-        
+            raise ValueError("Node %i already has a resonator coupled to it (only one per node supported currently)." % node)
+
         # Check there are no mutual inductors specified
         if component[0] != self._element_prefixes[0]:
-            raise Exception("The resonator coupling element must be a capacitor.")
-        
+            raise TypeError("The resonator coupling element must be a capacitor.")
+
         # Detect duplicates
         if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
-        
+            raise ValueError("Component %s already exists. Change the name of the component." % component)
+
         # Create the resonator capacitor and inductor symbols
         Cr = "%s%ir" % (self._element_prefixes[0], node)
         Lr = "%s%ir" % (self._element_prefixes[1], node)
-        
+
         # Create the resonator frequency and impedance symbols
         fr = "%s%ir" % (self._resonator_prefixes[0], node) # This is the bare frequency
         Zr = "%s%ir" % (self._resonator_prefixes[1], node)
-        
+
         # Create the Hamiltonian coupling term symbols
         gC = "%s%ir" % (self._resonator_prefixes[2], node)
-        
+
         # Create the loaded resonator and impedance symbols
         frd = "%s%irl" % (self._resonator_prefixes[0], node)
         Zrd = "%s%irl" % (self._resonator_prefixes[1], node)
-        
+
         self.resonators_cap[node] = {
             "coupling": component,
             "fr": fr,
@@ -153,161 +153,209 @@ class CircuitGraph:
             "frl": frd,
             "Zrl": Zrd
         }
-    
+
     def removeAllResonators(self):
-        """
+        """ Removes all resonator descriptions from the circuit graph.
         """
         for node in self.circuit_graph.nodes:
             self.resonators_cap[node] = None
-    
+
     def coupleResonatorInductively(self, edge, component, frequency, impedance=50.0):
-        """
+        """ Couples a linear resonator inductively.
         """
         pass
-    
-    def addFluxBias(self, edge, component, source_inductance=None):
+
+    def addFluxBias(self, edge_component, suffix, mutual_inductance=None):
+        """ Adds a flux bias term to the specified branch.
         """
-        """
+        edge = self.getComponentEdge(edge_component)
+        if not self.isEdgeInSuperconductingLoop(edge):
+            raise TypeError("The component %s is not part of a superconducting loop." % edge_component)
+        if type(suffix) is not str:
+            raise TypeError("The 'suffix' parameter is not a string.")
+        if len(suffix) > 8:
+            raise ValueError("The 'suffix' parameter is too long.")
         alt_edge = (edge[1], edge[0], edge[2])
         if edge not in self.sc_spanning_tree_wc.edges and alt_edge not in self.sc_spanning_tree_wc.edges:
-            raise Exception("Edge %s is not in conductive circuit subgraph." % repr(edge))
+            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge))
         edge = alt_edge if edge not in self.sc_spanning_tree_wc.edges else edge
-        
-        # Ensure component is a mutual inductance
-        if component[0] != self._element_prefixes[4]:
-            raise Exception("Flux bias coupling component must be a mutual inductance.")
-        
-        # Detect duplicates
-        if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
-        
-        # Check the edge has an inductor
-        if self.isInductiveEdge(edge) == False:
-            raise Exception("The selected edge %s is not inductive." % repr(edge))
-        
+
+        if mutual_inductance is not None:
+            # Ensure component is a mutual inductance
+            if mutual_inductance[0] != self._element_prefixes[4]:
+                raise TypeError("Flux bias coupling component must be a mutual inductance.")
+
+            # We can't load a JJ branch
+            if not self.isInductiveEdge(edge):
+                raise TypeError("A mutual inductance must be coupled to an inductive branch.")
+
+            # Detect duplicates
+            if mutual_inductance in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % mutual_inductance)
+
+            # Check the edge has an inductor
+            if self.isInductiveEdge(edge) == False:
+                raise TypeError("The selected edge %s is not inductive." % repr(edge))
+
         # Save it
-        self.flux_bias_edges[edge] = component
-        
-        # FIXME: For now we assume the source inductance is the same as the in-circuit inductance.
-    
-    def addChargeBias(self, node, component):
-        """
+        if edge in self.flux_bias_edges:
+            raise ValueError("Component %s already has a flux bias term." % edge_component)
+        if suffix in [v["suffix"] for v in self.flux_bias_edges.values()]:
+            raise ValueError("The suffix %s is already in use." % suffix)
+        self.flux_bias_edges[edge] = {
+            "mutual_inductance": mutual_inductance,
+            "suffix": suffix
+        }
+
+    def addChargeBias(self, node, suffix, coupling_capacitance=None):
+        """ Adds a charge bias term to the specified node.
         """
         if node not in self.circuit_graph.nodes:
-            raise Exception("Node %i not part of the circuit graph." % node)
-        
-        # Ensure component is a capacitor
-        if component[0] != self._element_prefixes[0]:
-            raise Exception("Charge bias coupling component must be a capacitor.")
-        
-        # Detect duplicates
-        if component in self.components_map.values():
-            raise Exception("Component %s already exists. Change the name of the component." % component)
-        
-        self.charge_bias_nodes[node] = component
-    
+            raise ValueError("Node %i not part of the circuit graph." % node)
+        if type(suffix) is not str:
+            raise TypeError("The 'suffix' parameter is not a string.")
+        if len(suffix) > 8:
+            raise ValueError("The 'suffix' parameter is too long.")
+
+        if coupling_capacitance is not None:
+            # Ensure component is a capacitor
+            if coupling_capacitance[0] != self._element_prefixes[0]:
+                raise TypeError("Charge bias coupling component must be a capacitor.")
+
+            # Detect duplicates
+            if coupling_capacitance in self.components_map.values():
+                raise ValueError("Component %s already exists. Change the name of the component." % coupling_capacitance)
+
+        if node in self.charge_bias_nodes:
+            raise ValueError("Node %i already has a charge bias term." % node)
+        if suffix in [v["suffix"] for v in self.charge_bias_nodes.values()]:
+            raise ValueError("The suffix %s is already in use." % suffix)
+        self.charge_bias_nodes[node] = {
+            "coupling_capacitance": coupling_capacitance,
+            "suffix": suffix
+        }
+
+    def isEdgeInSuperconductingLoop(self, edge):
+        """ Checks a branch is part of a superconducting loop.
+        """
+        if edge not in self.components_map:
+            raise ValueError("The specified edge %s was not found." % repr(edge))
+
+        for index, loop_edges in self.sc_loops.items():
+            if edge in loop_edges:
+                return True
+        return False
+
     def isCapacitiveEdge(self, edge):
+        """ Checks a branch contains a capacitor.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[0]:
             return True
         return False
-    
+
     def isInductiveEdge(self, edge):
+        """ Checks a branch contains an inductor.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[1]:
             return True
         return False
-    
+
     def isJosephsonEdge(self, edge):
+        """ Checks a branch contains a JJ.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[2]:
             return True
         return False
-    
+
     def isPhaseSlipEdge(self, edge):
+        """ Checks a branch contains a phase-slip nano wire.
+        """
         cstr = self.components_map[edge]
         if cstr[0] == self._element_prefixes[3]:
             return True
         return False
-    
+
     def getCapacitiveEdges(self):
+        """ Gets a mapping of all edges that contain a capacitor.
+        """
         edges_map = {v: k for k, v in self.components_map.items()}
         ret = {}
         for c, edge in edges_map.items():
             if c[0] == self._element_prefixes[0]:
                 ret[c] = edge
         return ret
-    
+
     def getInductiveEdges(self):
+        """ Gets a mapping of all edges that contain an inductor.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
             if c[0] == self._element_prefixes[1]:
                 ret[c] = edge
         return ret
-    
+
     def getJosephsonEdges(self):
+        """ Gets a mapping of all edges that contain a JJ.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
             if c[0] == self._element_prefixes[2]:
                 ret[c] = edge
         return ret
-    
+
     def getPhaseSlipEdges(self):
+        """ Gets a mapping of all edges that contain a phase-slip nanowire.
+        """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         ret = {}
         for c, edge in edges_map.items():
             if c[0] == self._element_prefixes[3]:
                 ret[c] = edge
         return ret
-    
+
     def getComponentEdge(self, component):
+        """ Gets the edge associated with the specified component.
+        """
         if component not in self.components_map.values():
-            raise Exception("Component %s does not exist." % component)
-        
+            raise ValueError("Component %s does not exist." % component)
+
         # Capacitive edges are not directional
         if component[0] == self._element_prefixes[0]:
             edges_map = {v: k for k, v in self.components_map.items()}
             return edges_map[component]
-        
+
         # Other edges are directional
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         return edges_map[component]
-    
-    def getLoopsFromClosureBranch(self, edge):
-        if edge not in self.closure_branches:
-            raise Exception("Edge %s not a closure branch." % repr(edge))
-        
-        loop_keys = []
-        for key, loop_edges in self.sc_loops.items():
-            if edge in loop_edges:
-                loop_keys.append(key)
-        return loop_keys
-    
+
     def getEdgesSharedWithLoop(self, loop_key):
         if loop_key not in self.sc_loops.keys():
-            raise Exception("No loop key %i available." % loop_key)
-        
+            raise ValueError("No loop key %i available." % loop_key)
+
         # Get the loops connected to this loop and save their edges
         loop_edges = set(self.sc_loops[loop_key])
         edges = set(self.sc_loops[loop_key])
         for key, loop in self.sc_loops.items():
             if key == loop_key:
                 continue
-            
+
             if not loop_edges.isdisjoint(set(loop)):
                 edges |= set(loop)
         return edges
-    
+
     #
     # DRAWING
     #
-    
+
     def drawGraphViz(self, graph='Circuit', filename=None, format='svg'):
         if graph not in self._subgraphs:
-            raise Exception("Invalid subgraph type '%s'." % graph)
-        
+            raise TypeError("Invalid subgraph type '%s'." % graph)
+
         if graph == "Circuit":
             G = self.circuit_graph
         elif graph == "Conductive":
@@ -318,19 +366,17 @@ class CircuitGraph:
             G = self.sc_spanning_tree_wc
         elif graph == "Loop":
             G = self.loop_graph
-        
+
         # Get the pydot graph
         pd_graph = nx.nx_pydot.to_pydot(G)
-        
+
         # Compile the graphviz source
-        gv_graph = gv.Source(pd_graph.create(format='dot').decode('utf8'))
-        
-        # Return the object, which should be rendered in a jupyter notebook
-        if filename is None:
-            return gv_graph
-        
-        # Save to file in specified format
-    
+        src = pd_graph.create(format='dot').decode('utf8')
+        if filename is not None:
+            with open(filename, "w") as fd:
+                fd.write(src)
+        return gv.Source(src)
+
     #
     # INTERNAL
     #
@@ -339,71 +385,63 @@ class CircuitGraph:
         self._get_virtual_grounds()
         self._get_spanning_tree()
         self._get_sc_circuit()
-        self._get_sc_loops()
         self._get_closure_branches()
+        self._get_sc_loops()
         self._get_loop_graph()
-    
+
     def _update_components_map(self):
         # Get all components keyed by edge
         self.components_map = nx.get_edge_attributes(self.circuit_graph, "component")
-        
+
         # Detect duplicates
         tmp = list(set(self.components_map.values()))
         if len(tmp) != len(self.components_map.values()):
-            raise Exception("Duplicate component detected. Change the name of the component.")
-        
+            raise ValueError("Duplicate component detected. Change the name of the component.")
+
         # Reverse the keys for convenience, use more memory rather than complicating later code
         tmp = {}
         for k, v in self.components_map.items():
             tmp[(k[1], k[0], k[2])] = v
         self.components_map.update(tmp)
-    
+
     def _update_couplings_map(self, edge):
         n1, n2, k = edge
-        if n1 not in self.charge_bias_nodes.keys():
-            self.charge_bias_nodes[n1] = None
-        if n2 not in self.charge_bias_nodes.keys():
-            self.charge_bias_nodes[n2] = None
-        if (n1, n2, k) not in self.flux_bias_edges.keys():
-            self.flux_bias_edges[(n1, n2, k)] = None
-        if (n2, n1, k) not in self.flux_bias_edges.keys():
-            self.flux_bias_edges[(n2, n1, k)] = None
         if n1 not in self.resonators_cap.keys():
             self.resonators_cap[n1] = None
         if n2 not in self.resonators_cap.keys():
             self.resonators_cap[n2] = None
-    
+
     def _get_conductive_graph(self):
         labels = nx.get_edge_attributes(self.circuit_graph, "label")
         self.circuit_conductive_graph = nx.MultiGraph()
-        
+
         # Add all nodes
         self.circuit_conductive_graph.add_nodes_from(self.circuit_graph.nodes)
-        
+
         # Ignore edges containing only capacitors
         for edge, component in nx.get_edge_attributes(self.circuit_graph, "component").items():
             if component[0] == self._element_prefixes[0]:
                 continue
             self.circuit_conductive_graph.add_edge(edge[0], edge[1], key=edge[2],
                                                    component=component, label=labels[edge])
-    
+
     def _get_virtual_grounds(self):
         labels = nx.get_edge_attributes(self.circuit_conductive_graph, "label")
         # Get connected graphs
         connected = [self.circuit_conductive_graph.subgraph(c).copy()\
                     for c in nx.connected_components(self.circuit_conductive_graph)]
-        
+
         # Get virtual grounds
         self.virtual_grounds = {}
         for subG in connected:
-            
+
             # If only one node, it is a virtual ground
             if len(subG.nodes) == 1:
                 n = list(subG.nodes)[0]
                 S = nx.MultiDiGraph()
                 S.add_node(n)
                 self.virtual_grounds[n] = ([], S)
-            
+
             # Get spanning tree of subgraph
             G = nx.minimum_spanning_tree(subG)
 
@@ -414,6 +452,8 @@ class CircuitGraph:
 
             # Get closure branches, i.e. those that do not appear in the spanning tree
             closure_edges = list(set(subG.edges) - set(S.edges))
+
+            # Format closure branches
             for i, edge in enumerate(closure_edges):
                 closure_edges[i] = (edge[1], edge[0], edge[2]) # reverse edge to preserve flow order
 
@@ -422,17 +462,17 @@ class CircuitGraph:
                 if d == 0:
                     self.virtual_grounds[n] = (closure_edges, S)
                     break
-    
+
     def _get_spanning_tree(self):
         S = nx.union_all([S for c, S in self.virtual_grounds.values()])
         labels = nx.get_edge_attributes(self.circuit_conductive_graph, "label")
-        
+
         # As the node order may have been changed, reconstruct the graph
         self.sc_spanning_tree = nx.MultiDiGraph()
         self.sc_spanning_tree.add_nodes_from(self.circuit_conductive_graph.nodes)
         for edge in S.edges:
             self.sc_spanning_tree.add_edge(edge[0], edge[1], key=edge[2], edge_type="S", label=labels[edge])
-    
+
     def _get_sc_circuit(self):
         labels = nx.get_edge_attributes(self.circuit_conductive_graph, "label")
         self.sc_spanning_tree_wc = self.sc_spanning_tree.copy()
@@ -441,10 +481,11 @@ class CircuitGraph:
                 edger = (edge[1], edge[0], edge[2])
                 label = labels[edger] if edge not in labels.keys() else labels[edge]
                 self.sc_spanning_tree_wc.add_edge(edge[0], edge[1], key=edge[2], edge_type="C", label=label)
-    
+
     def _get_sc_loops(self):
         c = 0
         self.sc_loops = {}
+        self.loop_closures = {}
         for source_node, spanning in self.virtual_grounds.items():
             closure_edges, S = spanning
 
@@ -458,13 +499,14 @@ class CircuitGraph:
                     self.sc_loops[c].extend(list(p1))
 
                 self.sc_loops[c].append(edge)
+                self.loop_closures[c] = edge
                 c+=1
-    
+
     def _get_closure_branches(self):
         self.closure_branches = []
         for closure_edges, S in self.virtual_grounds.values():
             self.closure_branches.extend(closure_edges)
-    
+
     def _get_loop_graph(self):
         loop_graph_nodes = {}
         loop_graph_edges = {}
@@ -483,7 +525,7 @@ class CircuitGraph:
         duplicates_dict = {k: v for k, v in counter_dict.items() if len(v) > 1}
         loop_graph_nodes = {}
         counter = 0
-        
+
         for k, v in duplicates_dict.items():
             for i in range(len(v)-1):
                 loop_graph_nodes[counter] = [v[i], v[i+1]]
@@ -491,7 +533,7 @@ class CircuitGraph:
 
             # Keep a set of multi-edges
             multi_edges.update(v)
-        
+
         # Reduce multigraph to simple graph by removing edge duplicates
         G = nx.Graph()
         G.add_edges_from(list(set([(e[0],e[1]) for e in self.circuit_graph.edges])))
@@ -500,10 +542,10 @@ class CircuitGraph:
         multi_edges_used = set()
         #for cycle in nx.minimum_cycle_basis(G):
         for cycle in nx.cycle_basis(G): # FIXME: This preserves node order but doesn't use minimum weight cycles.
-            
+
             # Last edge nodes are reversed to preserve ordering of multigraph
             edges = [(cycle[i], cycle[i+1], 0) if i < len(cycle)-1 else (cycle[(i+1)%len(cycle)], cycle[i], 0) for i in range(len(cycle))]
-            
+
             # Sort the edge nodes
             edges = [(e[0], e[1], e[2]) if e[0] < e[1] else (e[1], e[0], e[2]) for e in edges]
 
@@ -535,16 +577,10 @@ class CircuitGraph:
                 if len(edges) > 0:
                     loop_graph_edges[(i, j)] = edges
 
-        # Remove the edges in common between loops from the node attributes
-        #for ke, ve in loop_graph_edges.items():
-        #    for v in ve:
-        #        loop_graph_nodes[ke[0]].remove(v)
-        #        loop_graph_nodes[ke[1]].remove(v)
-        
         # Save the loop data
         self.loops_map = loop_graph_nodes
         self.loop_adjacency_map = loop_graph_edges
-        
+
         # Create the loop graph
         self.loop_graph = nx.Graph()
         for k, v in loop_graph_nodes.items():
@@ -552,4 +588,3 @@ class CircuitGraph:
 
         for k, v in loop_graph_edges.items():
             self.loop_graph.add_edge(k[0], k[1], circuit_edges=v)
-    

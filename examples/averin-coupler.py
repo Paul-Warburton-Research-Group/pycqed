@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -41,7 +41,7 @@ graph = CircuitGraph()
 graph.addBranch(0, 1, "Cc")
 graph.addBranch(0, 1, "C1")
 graph.addBranch(0, 1, "Ic")
-graph.addChargeBias(1, "Cg1")
+graph.addChargeBias(1, "c", "Cg1")
 graph.drawGraphViz()
 
 # The capacitance $C_1$ is included to account for any capacitive loading by external circuits, including stray capacitance to the island. $C_{g1}$ represents the gate capacitance, but it could be lumped into $C_1$.
@@ -87,7 +87,7 @@ hamil.setParameterValues(
     "Ic", Jc*Aj,
     "C1", 0.5,
     "Cg1", 5,
-    "Q1e", 0.5
+    "Qc", 0.5
 )
 # -
 
@@ -107,7 +107,7 @@ E[1]-E[0]
 # Configure the sweep
 hamil.newSweep()
 hamil.addSweep('Ic', Jc*Aj/2, Jc*Aj*2, 4)
-hamil.addSweep('Q1e', -1.0, 1.0, 101)
+hamil.addSweep('Qc', -1.0, 1.0, 101)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian')
@@ -121,7 +121,7 @@ sweep = hamil.paramSweep(timesweep=True)
 
 # +
 # Get the sweep for a high value of Ic
-x,Q1e_sweep,v = hamil.getSweep(sweep, 'Q1e', {'Ic':Jc*Aj})
+x,Q1e_sweep,v = hamil.getSweep(sweep, 'Qc', {'Ic':Jc*Aj})
 
 fig, ax = plt.subplots(ncols=2,nrows=1,constrained_layout=True,figsize=(15,6))
 ax1 = ax[0]
@@ -131,14 +131,14 @@ ax2 = ax[1]
 for i in range(5):
     y = Q1e_sweep[i]-Q1e_sweep[0]
     ax1.plot(x,y)
-ax1.set_xlabel("$Q_{1e}$ ($2e$)")
+ax1.set_xlabel("$Q_{c}$ ($2e$)")
 ax1.set_ylabel("$E_{g,i}$ (GHz)")
 ax1.set_title("Energy Spectrum")
 
 # Ground state
 y = Q1e_sweep[0]
 ax2.plot(x,y)
-ax2.set_xlabel("$Q_{1e}$ ($2e$)")
+ax2.set_xlabel("$Q_{c}$ ($2e$)")
 ax2.set_ylabel("$E_{0}$ (GHz)")
 ax2.set_title("Ground State")
 # -
@@ -146,8 +146,8 @@ ax2.set_title("Ground State")
 # As can be seen, the ground state energy varies very little, and thus the variation in the coupling energy will be very small. Let's now look at the ratio between the charging energy and Josephson energy:
 
 # Get the sweep for a single value of flux
-x, Ec_sweep, v = hamil.getSweep(sweep, 'Ic', {'Q1e': 0.5}, evaluable="ChargingEnergy")
-x, Ej_sweep, v = hamil.getSweep(sweep, 'Ic', {'Q1e': 0.5}, evaluable="JosephsonEnergy")
+x, Ec_sweep, v = hamil.getSweep(sweep, 'Ic', {'Qc': 0.5}, evaluable="ChargingEnergy")
+x, Ej_sweep, v = hamil.getSweep(sweep, 'Ic', {'Qc': 0.5}, evaluable="JosephsonEnergy")
 
 EcEj = Ec_sweep/Ej_sweep
 EcEj
@@ -158,11 +158,11 @@ EcEj
 
 # Get the sweep
 for i, Ic in enumerate(hamil.getParameterSweep('Ic')):
-    x, y, v = hamil.getSweep(sweep, 'Q1e', {'Ic': Ic})
+    x, y, v = hamil.getSweep(sweep, 'Qc', {'Ic': Ic})
     dy = np.gradient(np.gradient(y[0], x[1]-x[0], edge_order=2), x[1]-x[0], edge_order=2)/(Ec_sweep[i]*4)
     plt.plot(x, dy, label="$E_c/E_j$ = %.2f" % (EcEj[i]))
-plt.xlabel("$Q_{1e}$ ($2e$)")
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{\\partial Q_{1e}^2} / 4E_c$")
+plt.xlabel("$Q_{c}$ ($2e$)")
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{\\partial Q_{c}^2} / 4E_c$")
 plt.xlim(-0.5, 0.5)
 plt.ylim(-1.0, 0.5)
 plt.legend()
@@ -173,11 +173,11 @@ plt.legend()
 
 # Get the sweep
 for i, Ic in enumerate(hamil.getParameterSweep('Ic')):
-    x, y, v = hamil.getSweep(sweep, 'Q1e', {'Ic': Ic})
+    x, y, v = hamil.getSweep(sweep, 'Qc', {'Ic': Ic})
     dy = np.gradient(np.gradient(y[0], x[1]-x[0], edge_order=2)/4, x[1]-x[0], edge_order=2)
     plt.plot(x, dy, label="$E_c/E_j$ = %.2f" % (EcEj[i]))
-plt.xlabel("$Q_{1e}$ ($2e$)")
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ ($\\mathrm{GHz}$)")
+plt.xlabel("$Q_{c}$ ($2e$)")
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ ($\\mathrm{GHz}$)")
 plt.xlim(-0.5,0.5)
 plt.title("Coupling Strength Estimate")
 #plt.ylim(-1.0,0.5)
@@ -199,7 +199,7 @@ hamil.addEvaluation('ChargingEnergy', node=1)
 hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 
 # Set some parameters
-hamil.setParameterValue('Q1e', 0.5)
+hamil.setParameterValue('Qc', 0.5)
 
 sweep = hamil.paramSweep(timesweep=True)
 
@@ -229,7 +229,7 @@ plt.plot([EcEj3[-1],EcEj1[0]],[10,10],"k--",label="Min")
 plt.yscale('log')
 plt.xscale('log')
 plt.xlabel('$E_c/E_j$')
-plt.ylabel('Minimum Gap ($Q_{1e}=e$)\n GHz')
+plt.ylabel('Minimum Gap ($Q_{c}=e$)\n GHz')
 plt.title('Minimum Gap Against $E_c/E_j$')
 plt.legend(loc=1)
 
@@ -240,7 +240,7 @@ plt.plot([x[0],x[-1]],[10,10],"k--",label="Min")
 #plt.yscale('log')
 #plt.xscale('log')
 plt.xlabel('$I_c$ ($\\mathrm{\mu A}$)')
-plt.ylabel('Minimum Gap ($Q_{1e}=e$)\n GHz')
+plt.ylabel('Minimum Gap ($Q_{c}=e$)\n GHz')
 plt.title('Minimum Gap Against $I_c$')
 plt.legend(loc=1)
 
@@ -283,11 +283,11 @@ hamil.setParameterValues(
     'Jc', 3,
     'Cg1', 1.0,
     'C1', 10,
-    'Q1e', 0.5
+    'Qc', 0.5
 )
 
 hamil.newSweep()
-hamil.addSweep('Q1e', 0.499, 0.501, 3) # We need these points to take the derivative
+hamil.addSweep('Qc', 0.499, 0.501, 3) # We need these points to take the derivative
 hamil.addSweep('C1', 3, 17, 4)
 hamil.addSweep('Jc', 0.1, 10.0, 101)
 
@@ -303,19 +303,19 @@ print ("Cc = %.3f fF" % (hamil.getParameterValue('Cc')))
 # Take the second derivative of ground state against Jc and l1 points
 Cpl_e = []
 for l1 in hamil.getParameterSweep('C1'):
-    xy, z, v = hamil.getSweep(sweep, ['Jc', 'Q1e'], {'C1': l1})
+    xy, z, v = hamil.getSweep(sweep, ['Jc', 'Qc'], {'C1': l1})
     Cpl1 = []
     for i in range(len(xy[1])):
         Cpl1.append(np.gradient(np.gradient(z[0,i,:],xy[0][1]-xy[0][0],edge_order=2),xy[0][1]-xy[0][0],edge_order=2)[1])
     Cpl_e.append(np.array(Cpl1))
 
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 for i,Cpl1 in enumerate(Cpl_e):
     plt.plot(xy[1],np.abs(Cpl1)/4,label="$C_1$=%.1f fF" % (hamil.getParameterSweep('C1')[i]))
 plt.plot([xy[1][0],xy[1][-1]],[0.1,0.1],"k--",label="100 MHz")
 plt.yscale('log')
 plt.xlabel("$J_c$ $(\\mathrm{\mu A.\mu m^{-2}})$")
-plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)")
+plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)")
 plt.ylim((0.01,abs(Cpl_e[0][0])))
 plt.legend()
 plt.grid()
@@ -324,7 +324,7 @@ plt.grid()
 # Take the second derivative of ground state against Jc and l1 points
 Gap_e = []
 for l1 in hamil.getParameterSweep('C1'):
-    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1,'Q1e':0.5})
+    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1,'Qc':0.5})
     Gap_e.append(np.array(z[1]-z[0]))
 
 plt.title("Coupler Minimum Gap")
@@ -376,21 +376,21 @@ ax11.plot(x,np.abs(Cpl_e[1])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSwee
 ax11.plot(x,np.abs(Cpl_e[2])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[2]))
 ax11.plot(x,np.abs(Cpl_e[3])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[3]))
 ax11.plot(xran,[0.1,0.1],"k--",label="Min.")
-ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)\n Solid Lines")
+ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)\n Solid Lines")
 ax11.set_yscale('log')
 ax11.set_ylim((1e-2,1))
 ax1.set_xlim(xran)
 ax11.legend(loc=4)
 
 # +
-x,Ec_sweep1,v = hamil.getSweep(sweep,'Jc',{'C1':3,'Q1e':0.5},evaluable="ChargingEnergy")
-x,Ej_sweep1,v = hamil.getSweep(sweep,'Jc',{'C1':3,'Q1e':0.5},evaluable="JosephsonEnergy")
-x,Ec_sweep2,v = hamil.getSweep(sweep,'Jc',{'C1':8,'Q1e':0.5},evaluable="ChargingEnergy")
-x,Ej_sweep2,v = hamil.getSweep(sweep,'Jc',{'C1':8,'Q1e':0.5},evaluable="JosephsonEnergy")
-x,Ec_sweep3,v = hamil.getSweep(sweep,'Jc',{'C1':12,'Q1e':0.5},evaluable="ChargingEnergy")
-x,Ej_sweep3,v = hamil.getSweep(sweep,'Jc',{'C1':12,'Q1e':0.5},evaluable="JosephsonEnergy")
-x,Ec_sweep4,v = hamil.getSweep(sweep,'Jc',{'C1':17,'Q1e':0.5},evaluable="ChargingEnergy")
-x,Ej_sweep4,v = hamil.getSweep(sweep,'Jc',{'C1':17,'Q1e':0.5},evaluable="JosephsonEnergy")
+x,Ec_sweep1,v = hamil.getSweep(sweep,'Jc',{'C1':3,'Qc':0.5},evaluable="ChargingEnergy")
+x,Ej_sweep1,v = hamil.getSweep(sweep,'Jc',{'C1':3,'Qc':0.5},evaluable="JosephsonEnergy")
+x,Ec_sweep2,v = hamil.getSweep(sweep,'Jc',{'C1':8,'Qc':0.5},evaluable="ChargingEnergy")
+x,Ej_sweep2,v = hamil.getSweep(sweep,'Jc',{'C1':8,'Qc':0.5},evaluable="JosephsonEnergy")
+x,Ec_sweep3,v = hamil.getSweep(sweep,'Jc',{'C1':12,'Qc':0.5},evaluable="ChargingEnergy")
+x,Ej_sweep3,v = hamil.getSweep(sweep,'Jc',{'C1':12,'Qc':0.5},evaluable="JosephsonEnergy")
+x,Ec_sweep4,v = hamil.getSweep(sweep,'Jc',{'C1':17,'Qc':0.5},evaluable="ChargingEnergy")
+x,Ej_sweep4,v = hamil.getSweep(sweep,'Jc',{'C1':17,'Qc':0.5},evaluable="JosephsonEnergy")
 
 # Get energy ratio
 EcEj1 = Ec_sweep1/Ej_sweep1
@@ -399,7 +399,7 @@ EcEj3 = Ec_sweep3/Ej_sweep3
 EcEj4 = Ec_sweep4/Ej_sweep4
 # -
 
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 plt.plot(EcEj1,np.abs(Cpl_e[0])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[0]))
 plt.plot(EcEj2,np.abs(Cpl_e[1])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[1]))
 plt.plot(EcEj3,np.abs(Cpl_e[2])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[2]))
@@ -407,7 +407,7 @@ plt.plot(EcEj4,np.abs(Cpl_e[3])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterS
 plt.plot([EcEj4[-1],EcEj1[0]],[0.1,0.1],"k--",label="100 MHz")
 plt.yscale('log')
 plt.xlabel("$E_c/E_j$")
-plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)")
+plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)")
 #plt.ylim((0.01,abs(Cpl_e[0][0])))
 plt.legend()
 plt.grid()
@@ -416,7 +416,7 @@ plt.grid()
 # Take the second derivative of ground state against Jc and l1 points
 Gap_e = []
 for l1 in hamil.getParameterSweep('C1'):
-    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1,'Q1e':0.5})
+    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1,'Qc':0.5})
     Gap_e.append(np.array(z[1]-z[0]))
 
 plt.title("Coupler Minimum Gap")
@@ -453,14 +453,14 @@ ax11.plot(EcEj2,np.abs(Cpl_e[1])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameter
 ax11.plot(EcEj3,np.abs(Cpl_e[2])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[2]))
 ax11.plot(EcEj4,np.abs(Cpl_e[3])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[3]))
 ax11.plot(xran,[0.1,0.1],"k--",label="Min.")
-ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)\n Solid Lines")
+ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)\n Solid Lines")
 ax11.set_yscale('log')
 ax11.set_ylim((1e-2,1))
 ax1.set_xlim(xran)
 ax11.legend(loc=0)
 # -
 
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 plt.plot(Ej_sweep1,np.abs(Cpl_e[0])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[0]))
 plt.plot(Ej_sweep2,np.abs(Cpl_e[1])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[1]))
 plt.plot(Ej_sweep3,np.abs(Cpl_e[2])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[2]))
@@ -468,7 +468,7 @@ plt.plot(Ej_sweep4,np.abs(Cpl_e[3])/4,label="$C_{1}$=%.1f fF" % (hamil.getParame
 plt.plot([Ej_sweep3[-1],Ej_sweep1[0]],[0.1,0.1],"k--",label="100 MHz")
 plt.yscale('log')
 plt.xlabel("$E_j$ (GHz)")
-plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)")
+plt.ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)")
 #plt.ylim((0.01,abs(Cpl_e[0][0])))
 plt.legend(loc=4)
 plt.grid()
@@ -477,7 +477,7 @@ plt.grid()
 # Take the second derivative of ground state against Jc and l1 points
 Gap_e = []
 for l1 in hamil.getParameterSweep('C1'):
-    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1, 'Q1e':0.5})
+    x, z, v = hamil.getSweep(sweep,'Jc',{'C1':l1, 'Qc':0.5})
     Gap_e.append(np.array(z[1]-z[0]))
 
 plt.title("Coupler Minimum Gap")
@@ -514,7 +514,7 @@ ax11.plot(Ej_sweep2,np.abs(Cpl_e[1])/4,label="$C_{1}$=%.1f fF" % (hamil.getParam
 ax11.plot(Ej_sweep3,np.abs(Cpl_e[2])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[2]))
 ax11.plot(Ej_sweep4,np.abs(Cpl_e[3])/4,label="$C_{1}$=%.1f fF" % (hamil.getParameterSweep('C1')[3]))
 ax11.plot(xran,[0.1,0.1],"k--",label="Min.")
-ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}\\right|$ (GHz)\n Solid Lines")
+ax11.set_ylabel("$\\left|\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}\\right|$ (GHz)\n Solid Lines")
 ax11.set_yscale('log')
 ax11.set_ylim((1e-2,1))
 ax1.set_xlim(xran)
@@ -548,13 +548,13 @@ hamil.setParameterValues(
     'Jc', 1.5,
     'Cg1', 1,
     'C1', 7.7,
-    'Q1e', 0.5,
+    'Qc', 0.5,
     'phie', 0.0
 )
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',-1.0,1.0,101)
+hamil.addSweep('Qc',-1.0,1.0,101)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian')
@@ -564,12 +564,12 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-x, Q1e_sweep, v = hamil.getSweep(sweep, 'Q1e', {})
+x, Q1e_sweep, v = hamil.getSweep(sweep, 'Qc', {})
 
 for i in range(3):
     plt.plot(x,Q1e_sweep[i]-Q1e_sweep[0]*0)
 plt.title("Spectrum at $\Phi_e=0$")
-plt.xlabel("$Q_{1e}$ (2e)")
+plt.xlabel("$Q_{c}$ (2e)")
 plt.ylabel("$E_i$ (GHz)")
 
 # +
@@ -580,13 +580,13 @@ hamil.setParameterValues(
     'Jc', 1.5,
     'Cg1', 1,
     'C1', 7.7,
-    'Q1e', 0.5,
+    'Qc', 0.5,
     'phie', 0.5
 )
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',-1.0,1.0,101)
+hamil.addSweep('Qc',-1.0,1.0,101)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian')
@@ -596,12 +596,12 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-x,Q1e_sweep,v = hamil.getSweep(sweep,'Q1e',{})
+x,Q1e_sweep,v = hamil.getSweep(sweep,'Qc',{})
 
 for i in range(3):
     plt.plot(x,Q1e_sweep[i]-Q1e_sweep[0]*0)
 plt.title("Spectrum at $\Phi_e=0.5\Phi_0$")
-plt.xlabel("$Q_{1e}$ (2e)")
+plt.xlabel("$Q_{c}$ (2e)")
 plt.ylabel("$E_i$ (GHz)")
 
 # Ok lets look at the coupler strength and minimum gap as a function of the external flux:
@@ -614,13 +614,13 @@ hamil.setParameterValues(
     'Jc', 1.5,
     'Cg1', 1,
     'C1', 7.7,
-    'Q1e', 0.5,
+    'Qc', 0.5,
     'phie', 0.0
 )
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',0.4999,0.5001,3)
+hamil.addSweep('Qc',0.4999,0.5001,3)
 hamil.addSweep('phie',-0.5,0.5,201)
 
 # Configure the items to be evaluated
@@ -631,24 +631,24 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 plt.ylim((-1,0))
 plt.grid()
 
-x,E,v = hamil.getSweep(sweep,'phie',{'Q1e':0.5})
+x,E,v = hamil.getSweep(sweep,'phie',{'Qc':0.5})
 for i in range(3):
     plt.plot(x,E[i]-E[0])
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
-plt.title("Coupler Energy Gaps at $Q_{1e}=e$")
+plt.title("Coupler Energy Gaps at $Q_{c}=e$")
 
 # +
 hamil.setParameterValues(
@@ -658,13 +658,13 @@ hamil.setParameterValues(
     'Jc', 1.5,
     'Cg1', 1,
     'C1', 7.7,
-    'Q1e', 0.5,
+    'Qc', 0.5,
     'phie', 0.0
 )
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',-0.0001,0.0001,3)
+hamil.addSweep('Qc',-0.0001,0.0001,3)
 hamil.addSweep('phie',-0.5,0.5,201)
 
 # Configure the items to be evaluated
@@ -675,24 +675,24 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = 0$")
+plt.title("Coupling Strength at $Q_{c} = 0$")
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = 0$")
+plt.title("Coupling Strength at $Q_{c} = 0$")
 plt.ylim((0,1))
 plt.grid()
 
-x,E,v = hamil.getSweep(sweep,'phie',{'Q1e':0.0})
+x,E,v = hamil.getSweep(sweep,'phie',{'Qc':0.0})
 for i in range(3):
     plt.plot(x,E[i]-E[0])
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
-plt.title("Coupler Energy Gaps at $Q_{1e}=e$")
+plt.title("Coupler Energy Gaps at $Q_{c}=e$")
 
 # We see that the small $E_J$ we are aiming for now sets the minimum achievable coupling strength, which is a positive, but it now sets the maximum minimum-gap of the coupler spectrum, which is highly undesireable. Therefore the first thing to try is to increase $E_J$ to set a new minimum that is an acceptable turn-off point for the coupling term (i.e. at the beginning of the anneal).
 
@@ -701,7 +701,7 @@ hamil.setParameterValue('wse', 0.2)
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',0.4999,0.5001,3)
+hamil.addSweep('Qc',0.4999,0.5001,3)
 hamil.addSweep('phie',-0.5,0.5,201)
 
 # Configure the items to be evaluated
@@ -712,29 +712,29 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = e$")
+plt.title("Coupling Strength at $Q_{c} = e$")
 plt.ylim((-1,0))
 plt.grid()
 
-x,E,v = hamil.getSweep(sweep,'phie',{'Q1e':0.5})
+x,E,v = hamil.getSweep(sweep,'phie',{'Qc':0.5})
 for i in range(3):
     plt.plot(x,E[i]-E[0])
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
-plt.title("Coupler Energy Gaps at $Q_{1e}=e$")
+plt.title("Coupler Energy Gaps at $Q_{c}=e$")
 
 # +
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e',-0.0001,0.0001,3)
+hamil.addSweep('Qc',-0.0001,0.0001,3)
 hamil.addSweep('phie',-0.5,0.5,201)
 
 # Configure the items to be evaluated
@@ -745,24 +745,24 @@ hamil.addEvaluation('JosephsonEnergy', edge=(0,1,2))
 sweep = hamil.paramSweep()
 # -
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = 0$")
+plt.title("Coupling Strength at $Q_{c} = 0$")
 
-plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Q1e')[1:-1]/4)
-plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{1e}^2}$ (GHz)")
+plt.plot(hamil.getParameterSweep('phie')[1:-1],diff2(sweep,'phie','Qc')[1:-1]/4)
+plt.ylabel("$\\frac{\\partial^2 E_{0}}{4\\partial Q_{c}^2}$ (GHz)")
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
-plt.title("Coupling Strength at $Q_{1e} = 0$")
+plt.title("Coupling Strength at $Q_{c} = 0$")
 plt.ylim((0,1))
 plt.grid()
 
-x,E,v = hamil.getSweep(sweep,'phie',{'Q1e':0.0})
+x,E,v = hamil.getSweep(sweep,'phie',{'Qc':0.0})
 for i in range(3):
     plt.plot(x,E[i]-E[0])
 plt.xlabel("$\\Phi_e$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
-plt.title("Coupler Energy Gaps at $Q_{1e}=0$")
+plt.title("Coupler Energy Gaps at $Q_{c}=0$")
 
 # We see that by doubling the junction area, the maximum $E_J$ sets a minimum value of coupling energy close to zero. The flux would then need to be increased to a maximum value determined by the minimum gap condition, which also sets the maximum achievable coupling strength.
 #
@@ -776,7 +776,7 @@ graph = CircuitGraph()
 graph.addBranch(0, 1, "Cj")
 graph.addBranch(0, 1, "C1")
 graph.addBranch(0, 1, "Ij")
-graph.addChargeBias(1, "Cg1")
+graph.addChargeBias(1, "c", "Cg1")
 graph.coupleResonatorCapacitively(1, "Cc")
 graph.drawGraphViz()
 
@@ -812,7 +812,7 @@ hamil.setDiagConfig(get_vectors=True, eigvalues=20)
 
 # Configure the sweep
 hamil.newSweep()
-hamil.addSweep('Q1e', -1, 1, 101)
+hamil.addSweep('Qc', -1, 1, 101)
 
 # Configure the items to be evaluated
 hamil.addEvaluation('Hamiltonian')
@@ -830,7 +830,7 @@ hamil.setParameterValues(
     'f1r',  6.63156,
     'Z1r',  50.0,
     'Cc',   2.0,
-    'Q1e',  0.0,
+    'Qc',  0.0,
     'phie', 0.0
 )
 
@@ -842,7 +842,7 @@ hamil.SS.getSymbolValuesDict()
 
 # First let's compare the bare spectrum vs the dressed spectrum:
 
-x,EV,v = hamil.getSweep(sweep, 'Q1e', {}, evaluable='Hamiltonian')
+x,EV,v = hamil.getSweep(sweep, 'Qc', {}, evaluable='Hamiltonian')
 E = EV[:,0]
 V = EV[:,1]
 
@@ -855,26 +855,26 @@ ax2 = ax[1]
 for i in range(5):
     y = E[i]-E[0]
     ax1.plot(x, y)
-ax1.set_xlabel("$Q_{1e}$ ($2e$)")
+ax1.set_xlabel("$Q_{c}$ ($2e$)")
 ax1.set_ylabel("$E_{g,i}$ (GHz)")
 ax1.set_title("(Loaded) Bare Coupler Energy Spectrum")
 
 # Ground state
 y = E[1]
 ax2.plot(x, y)
-ax2.set_xlabel("$Q_{1e}$ ($2e$)")
+ax2.set_xlabel("$Q_{c}$ ($2e$)")
 ax2.set_ylabel("$E_{0}$ (GHz)")
 ax2.set_title("Ground State")
 # -
 
-x,Erwa,v = hamil.getSweep(sweep,'Q1e',{},evaluable='Resonator')
+x,Erwa,v = hamil.getSweep(sweep,'Qc',{},evaluable='Resonator')
 Edressed = util.getCircuitLambShift(Erwa)
 
 # Dressed energy spectrum
 for i in range(5):
     y = Edressed[i]
     plt.plot(x,y)
-plt.xlabel("$Q_{1e}$ ($2e$)")
+plt.xlabel("$Q_{c}$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.title("(Loaded) Dressed Coupler Energy Spectrum")
 
@@ -894,9 +894,9 @@ Eres = util.getResonatorShift(Erwa)
 plt.plot(x,Eres[0,0])
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
-plt.xlabel("$Q_{1e}$ ($2e$)")
+plt.xlabel("$Q_{c}$ ($2e$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
-plt.title("Resonator Modulation Against $Q_{1e}$")
+plt.title("Resonator Modulation Against $Q_{c}$")
 
 # The fact that the resonator frequency is pulled downwards is understood, since the energy gap is always larger than the resonator energy here. We also seem to get a decent modulation depth, about 10 MHz for the given coupling capacitance of 5 fF.
 
@@ -907,7 +907,7 @@ plt.title("Resonator Modulation Against $Q_{1e}$")
 # +
 # Set the parameter values
 hamil.setParameterValues(
-    'Q1e', 0.0,
+    'Qc', 0.0,
     'wse', 0.2,
 )
 
@@ -962,12 +962,12 @@ plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
 plt.xlabel("$\\Phi_{e}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
-plt.title("Resonator Modulation Against $\\Phi_{e}$ at $Q_{1e}=0$")
+plt.title("Resonator Modulation Against $\\Phi_{e}$ at $Q_{c}=0$")
 
 # +
 # Set the parameter values
 hamil.setParameterValues(
-    'Q1e', 0.5
+    'Qc', 0.5
 )
 
 hamil.newSweep()
@@ -1019,7 +1019,7 @@ plt.plot([x[0], x[-1]], [fr, fr], "k--")
 plt.plot([x[0], x[-1]], [frl, frl], "r--")
 plt.xlabel("$\\Phi_{e}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
-plt.title("Resonator Modulation Against $\\Phi_{e}$ at $Q_{1e}=e$")
+plt.title("Resonator Modulation Against $\\Phi_{e}$ at $Q_{c}=e$")
 # -
 
 
