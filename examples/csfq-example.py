@@ -78,7 +78,7 @@ hamil.setParameterValues(
 # Now we can generate the Hamiltonian using the substituted values:
 
 H = hamil.getHamiltonian()
-display(H)
+H
 
 # We can then diagonalise it using `qutip`'s diagonalizer for just the eigenvalues to check the value of the gap at the chosen value of `phi10e`:
 
