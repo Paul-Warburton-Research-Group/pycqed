@@ -63,3 +63,4 @@ jobs:
         poetry run python resonator-example.py
         poetry run python local-basis-example.py
         poetry run python jpsq-example.py
+        poetry run python csfq-example.py
