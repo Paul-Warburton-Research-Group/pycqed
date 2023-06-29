@@ -948,6 +948,8 @@ class NumericalSystem(ds.TempData):
                     # Write to temp file
                     f = self.writePart(results)
                     tmp_results.append(f)
+                if timesweep:
+                    print(".", end="")
             
             # Convert the result entries to ndarray
             if not self.__use_temp:
@@ -983,6 +985,8 @@ class NumericalSystem(ds.TempData):
                     # Write to temp file
                     f = self.writePart(results)
                     tmp_results.append(f)
+                if timesweep:
+                    print(".", end="")
             
             # Convert results to ndarray
             if not self.__use_temp:
@@ -994,6 +998,7 @@ class NumericalSystem(ds.TempData):
         # Report timings
         if timesweep:
             end_time = time.time()
+            print ()
             print ("Parameter Sweep Duration:")
             print ("  Initialization:\t%.3f s" % (loop_time-init_time))
             print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
