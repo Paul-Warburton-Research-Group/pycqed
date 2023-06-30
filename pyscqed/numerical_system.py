@@ -3,6 +3,7 @@ import numpy as np
 import sympy as sy
 import scipy as sc
 import networkx as nx
+import progress.bar
 import time
 
 from . import dataspec as ds
@@ -921,27 +922,30 @@ class NumericalSystem(ds.TempData):
         # Time loop
         if timesweep:
             loop_time = time.time()
-        for i in range(self.SS.sweep_grid_npts):
-            # Do the post-substitutions
-            self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
+        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
+            for i in range(self.SS.sweep_grid_npts):
+                # Do the post-substitutions
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
 
-            # Get requested evaluable
-            M = getattr(self, entry['eval'])(**entry['kwargs'])
-            if self.__use_temp:
-                if entry['diag']:
-                    results = self.diagonalize(M)
+                # Get requested evaluable
+                M = getattr(self, entry['eval'])(**entry['kwargs'])
+                if self.__use_temp:
+                    if entry['diag']:
+                        results = self.diagonalize(M)
+                    else:
+                        results = M
                 else:
-                    results = M
-            else:
-                if entry['diag']:
-                    results.append(self.diagonalize(M))
-                else:
-                    results.append(M)
+                    if entry['diag']:
+                        results.append(self.diagonalize(M))
+                    else:
+                        results.append(M)
 
-            if self.__use_temp:
-                # Write to temp file
-                f = self.writePart(results)
-                tmp_results.append(f)
+                if self.__use_temp:
+                    # Write to temp file
+                    f = self.writePart(results)
+                    tmp_results.append(f)
+                bar.next()
+            bar.finish()
 
         # Convert results to ndarray
         if not self.__use_temp:
@@ -963,55 +967,58 @@ class NumericalSystem(ds.TempData):
         # Time loop
         if timesweep:
             loop_time = time.time()
-        for i in range(self.SS.sweep_grid_npts):
-            # Do the post-substitutions
-            self._postsub({k: v[i] for k, v in self.SS.sweep_grid_c.items()})
+        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
+            for i in range(self.SS.sweep_grid_npts):
+                # Do the post-substitutions
+                self._postsub({k: v[i] for k, v in self.SS.sweep_grid_c.items()})
 
-            # Get requested evaluables
-            E = None
-            V = None
-            for entry in self.evaluations:
-
-                # Check if this evaluable depends on another
-                if entry['depends'] is not None:
-                    try:
-                        if self.__use_temp:
-                            dep = results[entry['depends']]
-                        else:
-                            dep = results[entry['depends']][i]
-                    except:
-                        raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
-
-                    # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
-                    try:
-                        E, V = dep
-                    except:
-                        raise Exception("need eigenvectors for 'depends'")
-
-                # Check if evaluation depends on eigenvalues and eigenvectors and run it
-                if V is not None:
-                    M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
-                else:
-                    M = getattr(self, entry['eval'])(**entry['kwargs'])
-
-                # Check if diagonalisation is required
-                if self.__use_temp:
-                    if entry['diag']:
-                        results[entry['eval']] = self.diagonalize(M)
-                    else:
-                        results[entry['eval']] = M
-                else:
-                    if entry['diag']:
-                        results[entry['eval']].append(self.diagonalize(M))
-                    else:
-                        results[entry['eval']].append(M)
+                # Get requested evaluables
                 E = None
                 V = None
+                for entry in self.evaluations:
 
-            if self.__use_temp:
-                # Write to temp file
-                f = self.writePart(results)
-                tmp_results.append(f)
+                    # Check if this evaluable depends on another
+                    if entry['depends'] is not None:
+                        try:
+                            if self.__use_temp:
+                                dep = results[entry['depends']]
+                            else:
+                                dep = results[entry['depends']][i]
+                        except:
+                            raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
+
+                        # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
+                        try:
+                            E, V = dep
+                        except:
+                            raise Exception("need eigenvectors for 'depends'")
+
+                    # Check if evaluation depends on eigenvalues and eigenvectors and run it
+                    if V is not None:
+                        M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
+                    else:
+                        M = getattr(self, entry['eval'])(**entry['kwargs'])
+
+                    # Check if diagonalisation is required
+                    if self.__use_temp:
+                        if entry['diag']:
+                            results[entry['eval']] = self.diagonalize(M)
+                        else:
+                            results[entry['eval']] = M
+                    else:
+                        if entry['diag']:
+                            results[entry['eval']].append(self.diagonalize(M))
+                        else:
+                            results[entry['eval']].append(M)
+                    E = None
+                    V = None
+
+                if self.__use_temp:
+                    # Write to temp file
+                    f = self.writePart(results)
+                    tmp_results.append(f)
+                bar.next()
+            bar.finish()
 
         # Convert the result entries to ndarray
         if not self.__use_temp:
