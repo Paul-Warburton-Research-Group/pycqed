@@ -314,7 +314,7 @@ class SymbolicSystem(ParamCollection):
     
     def getInductanceMatrix(self, mode="node", parameterise=True):
         Mb = sy.eye(self.Nb) - sy.eye(self.Nb)
-        
+
         # Diagonals
         for i, edge in enumerate(self.edges):
             if edge not in self.CG.flux_bias_edges:
@@ -330,36 +330,66 @@ class SymbolicSystem(ParamCollection):
                     else:
                         M = self.circuit_params[self.CG.flux_bias_edges[edge]]["mutual_inductance"]
                         Mb[i, i] = (L**2 - M**2)/L
-        
+
         # Off-diagonals: always coupled branches
         for component, edges in self.CG.coupled_branches.items():
-            edge1, edges2 = edges
+            edge1, edge2 = edges
             i = self.edges.index(edge1)
             j = self.edges.index(edge2)
             Mb[i, j] = self.circuit_params[component]
             Mb[j, i] = self.circuit_params[component]
-        
+
         # Transform to node representation
         if mode == "node":
-            return self.Rbn*Mb*self.Rnb
+            M = self.Rbn*Mb*self.Rnb
+            if not parameterise:
+                return M
+
+            # Parameterise the matrix elements
+            for i in range(M.shape[0]):
+                for j in range(i, M.shape[1]):
+                    if M[i, j] == 0 or len(M[i, j].free_symbols) < 2:
+                        continue
+
+                    name = "L%i%i" % (i, j)
+                    self.addParameter(name)
+                    self.addParameterisation(name, M[i, j])
+                    M[i, j] = self.getSymbol(name)
+                    M[j, i] = self.getSymbol(name)
+            return M
         elif mode == "branch":
             return Mb
-    
+
     def getInverseInductanceMatrix(self, mode="node", parameterise=True):
         # Off-diagonals
         Mb = self.getInductanceMatrix(mode="branch", parameterise=parameterise)
-        
+
         # Take the pseudo-inverse of the branch inductance matrix
-        if self.use_transform:
-            if mode == "node":
-                return self.RinvT*self.Rbn*Mb.pinv()*self.Rnb*self.Rinv
-            elif mode == "branch":
-                return self.Rnb*self.RinvT*self.Rbn*Mb.pinv()*self.Rnb*self.Rinv*self.Rbn
         if mode == "node":
-            return self.Rbn*Mb.pinv()*self.Rnb
+            M = self.Rbn*Mb.pinv()*self.Rnb
+            if self.use_transform:
+                M = self.RinvT * M * self.Rinv
+            if not parameterise:
+                return M
+            # Parameterise the matrix elements
+            for i in range(M.shape[0]):
+                for j in range(i, M.shape[1]):
+                    if M[i, j] == 0 or len(M[i, j].free_symbols) < 2:
+                        continue
+
+                    name = "L%i%ii" % (i, j)
+                    self.addParameter(name)
+                    self.addParameterisation(name, M[i, j])
+                    M[i, j] = self.getSymbol(name)
+                    M[j, i] = self.getSymbol(name)
+            return M
+
         elif mode == "branch":
-            return Mb.pinv()
-    
+            Mb = Mb.pinv()
+            if self.use_transform:
+                Mb = self.Rnb*self.RinvT*self.Rbn*Mb*self.Rnb*self.Rinv*self.Rbn
+            return Mb
+
     #
     # JOSEPHSON JUNCTIONS
     #

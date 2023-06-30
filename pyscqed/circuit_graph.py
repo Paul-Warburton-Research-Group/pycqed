@@ -82,30 +82,22 @@ class CircuitGraph:
         self._update_graphs()
         self._update_couplings_map((n1, n2, k))
 
-    def coupleBranchesInductively(self, edge1, edge2, component):
+    def coupleBranchesInductively(self, inductor1, inductor2, component):
         """ Couples two branches inductively.
         """
-        alt_edge1 = (edge1[1], edge1[0], edge1[2])
-        alt_edge2 = (edge2[1], edge2[0], edge2[2])
-
-        if edge1 not in self.sc_spanning_tree_wc.edges and alt_edge1 not in self.sc_spanning_tree_wc.edges:
-            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge1))
-        if edge2 not in self.sc_spanning_tree_wc.edges and alt_edge2 not in self.sc_spanning_tree_wc.edges:
-            raise TypeError("Edge %s is not in conductive circuit subgraph." % repr(edge2))
-
-        edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
-        edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
-
         # Check the edges are inductive
-        if self.isInductiveEdge(edge1) == False:
-            raise TypeError("The selected edge %s is not inductive." % repr(edge1))
-        if self.isInductiveEdge(edge2) == False:
-            raise TypeError("The selected edge %s is not inductive." % repr(edge2))
-
-        # Ensure component is a mutual inductance
         if component[0] != self._element_prefixes[4]:
             raise TypeError("Branch coupling component must be a mutual inductance.")
-
+        edge1 = self.getComponentEdge(inductor1)
+        edge2 = self.getComponentEdge(inductor2)
+        if not self.isInductiveEdge(edge1):
+            raise TypeError("The selected component %s is not an inductor." % inductor1)
+        if not self.isInductiveEdge(edge2):
+            raise TypeError("The selected component %s is not an inductor." % inductor2)
+        alt_edge1 = (edge1[1], edge1[0], edge1[2])
+        alt_edge2 = (edge2[1], edge2[0], edge2[2])
+        edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
+        edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
         self.coupled_branches[component] = (edge1, edge2)
 
     def coupleResonatorCapacitively(self, node, component):
