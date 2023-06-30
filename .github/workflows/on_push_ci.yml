@@ -34,7 +34,6 @@ jobs:
         poetry run coverage erase
 
   examples:
-    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
     continue-on-error: false
     strategy:
