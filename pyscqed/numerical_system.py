@@ -3,6 +3,7 @@ import numpy as np
 import sympy as sy
 import scipy as sc
 import networkx as nx
+import progress.bar
 import time
 
 from . import dataspec as ds
@@ -862,52 +863,120 @@ class NumericalSystem(ds.TempData):
         key = self.__eval_spec[evaluable]['eval']
         return self.SS.getSweepResult(ind_var, static_vars, data=data, key=key)
     
-    def paramSweep(self, timesweep=False):
-        
+    def paramSweep(self, timesweep=True):
         # Time initialisation
         if timesweep:
             init_time = time.time()
-        
+
         # FIXME: Automatically configure diagonaliser here, based on data on the evaluables
-        
+
         # Check if using default evaluables
         if len(self.evaluations) == 0:
             self.evaluations = [self.__eval_spec["Hamiltonian"]]
-        
+
         # Generate sweep grid
         self.SS.ndSweep(self.sweep_specs)
-        
+
         # FIXME: Determine if we should be saving the data to temp files rather than in RAM:
         # Use the diagonaliser configuration, the requested evaluation functions, and the total number of sweep setpoints that will be used.
         self.__use_temp = True
-        if self.__use_temp:
-            tmp_results = []
-        
+
         # Do pre-substitutions to avoid repeating un-necessary substitutions in loops
         self._presub()
-        
+
         # FIXME: Check that all symbolic variables have an associated value at this point
-        
+
         # Do the requested evaluations
         if len(self.evaluations) > 1:
-            
-            # Prepare the results structure
-            results = {}
-            for entry in self.evaluations:
-                results[entry['eval']] = []
-            
-            # Time loop
-            if timesweep:
-                loop_time = time.time()
+            data = self._evaluate_multiple(timesweep)
+        else:
+            data = self._evaluate_single(timesweep)
+
+        # Reset the evaluables
+        self._init_sweep_data()
+
+        # Report timings
+        if timesweep:
+            end_time = time.time()
+            loop_time = data["loop_time"]
+            print ("Parameter Sweep Duration:")
+            print ("  Initialization:\t%.3f s" % (loop_time-init_time))
+            print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
+            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.SS.sweep_grid_npts))
+        if self.__use_temp:
+            return data["results_disk"]
+        else:
+            return data["results_ram"]
+
+
+    ###################################################################################################################
+    #       Internal Functions
+    ###################################################################################################################
+
+    def _evaluate_single(self, timesweep):
+        results = []
+        entry = self.evaluations[0]
+        tmp_results = []
+        loop_time = 0.0
+
+        # Time loop
+        if timesweep:
+            loop_time = time.time()
+        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
+            for i in range(self.SS.sweep_grid_npts):
+                # Do the post-substitutions
+                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
+
+                # Get requested evaluable
+                M = getattr(self, entry['eval'])(**entry['kwargs'])
+                if self.__use_temp:
+                    if entry['diag']:
+                        results = self.diagonalize(M)
+                    else:
+                        results = M
+                else:
+                    if entry['diag']:
+                        results.append(self.diagonalize(M))
+                    else:
+                        results.append(M)
+
+                if self.__use_temp:
+                    # Write to temp file
+                    f = self.writePart(results)
+                    tmp_results.append(f)
+                bar.next()
+            bar.finish()
+
+        # Convert results to ndarray
+        if not self.__use_temp:
+            results = np.array(results)
+        return {
+            "results_ram": results,
+            "results_disk": tmp_results,
+            "loop_time": loop_time
+        }
+
+    def _evaluate_multiple(self, timesweep):
+        # Prepare the results structure
+        results = {}
+        for entry in self.evaluations:
+            results[entry['eval']] = []
+        tmp_results = []
+        loop_time = 0.0
+
+        # Time loop
+        if timesweep:
+            loop_time = time.time()
+        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
             for i in range(self.SS.sweep_grid_npts):
                 # Do the post-substitutions
                 self._postsub({k: v[i] for k, v in self.SS.sweep_grid_c.items()})
-                
+
                 # Get requested evaluables
                 E = None
                 V = None
                 for entry in self.evaluations:
-                    
+
                     # Check if this evaluable depends on another
                     if entry['depends'] is not None:
                         try:
@@ -917,19 +986,19 @@ class NumericalSystem(ds.TempData):
                                 dep = results[entry['depends']][i]
                         except:
                             raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
-                        
+
                         # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
                         try:
                             E, V = dep
                         except:
                             raise Exception("need eigenvectors for 'depends'")
-                    
+
                     # Check if evaluation depends on eigenvalues and eigenvectors and run it
                     if V is not None:
                         M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
                     else:
                         M = getattr(self, entry['eval'])(**entry['kwargs'])
-                    
+
                     # Check if diagonalisation is required
                     if self.__use_temp:
                         if entry['diag']:
@@ -943,126 +1012,24 @@ class NumericalSystem(ds.TempData):
                             results[entry['eval']].append(M)
                     E = None
                     V = None
-                
+
                 if self.__use_temp:
                     # Write to temp file
                     f = self.writePart(results)
                     tmp_results.append(f)
-            
-            # Convert the result entries to ndarray
-            if not self.__use_temp:
-                for entry in self.evaluations:
-                    results[entry['eval']] = np.array(results[entry['eval']])
-        
-        # Do the single requested evaluation
-        else:
-            results = []
-            entry = self.evaluations[0]
-            
-            # Time loop
-            if timesweep:
-                loop_time = time.time()
-            for i in range(self.SS.sweep_grid_npts):
-                # Do the post-substitutions
-                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
-                
-                # Get requested evaluable
-                M = getattr(self, entry['eval'])(**entry['kwargs'])
-                if self.__use_temp:
-                    if entry['diag']:
-                        results = self.diagonalize(M)
-                    else:
-                        results = M
-                else:
-                    if entry['diag']:
-                        results.append(self.diagonalize(M))
-                    else:
-                        results.append(M)
-                
-                if self.__use_temp:
-                    # Write to temp file
-                    f = self.writePart(results)
-                    tmp_results.append(f)
-            
-            # Convert results to ndarray
-            if not self.__use_temp:
-                results = np.array(results)
-        
-        # Reset the evaluables
-        self._init_sweep_data()
-        
-        # Report timings
-        if timesweep:
-            end_time = time.time()
-            print ("Parameter Sweep Duration:")
-            print ("  Initialization:\t%.3f s" % (loop_time-init_time))
-            print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
-            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.SS.sweep_grid_npts))
-        if self.__use_temp:
-            return tmp_results
-        else:
-            return results
-    
-    def paramSweepFunc(self, sweep_spec, ufcn, ufcn_args={}, get_vectors=False, sparse=False, sparselevels=6, sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}):
-        self.params.ndSweep(sweep_spec)
-        #self.eval_dp = True # Signal we want to calculate derived parameters
-        
-        # FIXME: Need a way to check if the Hamiltonian will need to be updated, this complicates things.
-        
-        self._presub()
-        result = []
-        func_result = []
-        params = None
-        E = None
-        V = None
-        if not get_vectors:
-            if not sparse:
-                for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
-                    self._postsub(params)
-                    E = self.getHamiltonian().eigenenergies()
-                    result.append(E)
-                    func_result.append(ufcn(self, params, E, **ufcn_args))
-            else:
-                H = None
-                for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
-                    self._postsub(params)
-                    
-                    # Solve
-                    E = sc.sparse.linalg.eigsh(self.getHamiltonian().data, k=sparselevels, return_eigenvectors=False, **sparsesolveropts)
-                    
-                    # Sort the results
-                    E.sort()
-                    result.append(E)
-                    func_result.append(ufcn(self, params, E, **ufcn_args))
-        else:
-            if not sparse:
-                for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
-                    self._postsub(params)
-                    E, V = self.getHamiltonian().eigenstates()
-                    result.append([E, V])
-                    func_result.append(ufcn(self, params, E, V, **ufcn_args))
-            else:
-                H = None
-                for i in range(self.params.sweep_grid_npts):
-                    params = dict([(k, v[i]) for k, v in self.params.sweep_grid_c.items()])
-                    self._postsub(params)
-                    
-                    # Solve
-                    E, V = sc.sparse.linalg.eigsh(self.getHamiltonian().data, k=sparselevels, return_eigenvectors=True, **sparsesolveropts)
-                    
-                    # FIXME: Sort the results and convert eigenvectors to qutip 
-                    result.append((E, V.T))
-                    func_result.append(ufcn(self, params, E, V.T, **ufcn_args))
-                    
-        return np.array(result), np.array(func_result)
-    
-    ###################################################################################################################
-    #       Internal Functions
-    ###################################################################################################################
-    
+                bar.next()
+            bar.finish()
+
+        # Convert the result entries to ndarray
+        if not self.__use_temp:
+            for entry in self.evaluations:
+                results[entry['eval']] = np.array(results[entry['eval']])
+        return {
+            "results_ram": results,
+            "results_disk": tmp_results,
+            "loop_time": loop_time
+        }
+
     # Initialises the sweep data
     def _init_sweep_data(self):
         self.sweep_specs = []
