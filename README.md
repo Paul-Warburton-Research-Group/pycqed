@@ -41,7 +41,9 @@ poetry install
 The best way to get started quickly is to build upon the examples provided in the `notebooks/` directory. There are several use cases covered, ordered from simplest to most advanced usage of the package:
 * `transmon-example.py`: Basic simulation of a transmon qubit, replicating results obtained from a more approximated model of this circuit.
 * `fluxonium-example.py`: Simulation of the fluxonium qubit reported by Alibaba. The results they obtain are reproduced numerically, including the qubit spectrum, resonator dispersive shift and qubit-qubit coupling energy.
+* `csfq-example.py`: Simulations of the different types of capacitively shunted flux qubits, including the RF-SQUID and 3/4JJ flux qubits, and floating variants.
 * `averin-coupler.py`: Extensive simulations and example of a process for designing a tunable capacitive coupling element for quantum annealing applications. This notebooks make extensive use of parametric expressions to express circuit components in terms of fabrication parameters and to approximate tuneable Josephson junctions. The response of a dispersively coupled resonator is also analysed.
+* `fluxonium-atom.py`: Simulation of strongly inductively coupled fluxonium atoms, using some optimizations for minimizing the Hilbert space size.
 * `resonator-example.py`: In depth analysis of a resonator coupled to a RF-SQUID flux qubit. The resonator dispersive shift, qubit Lamb shift and cavity photon-dependent AC-Stark shift are analysed.
 * `local-basis-example.py`: Here we reduce both a RF-SQUID flux qubit and a Cooper-pair box qubit to the two-level system representation using the local basis reduction technique.
 * `jpsq-example.py`: Simulations of Josephson Phase-Slip Qubits are performed, demonstrating how certain circuit components impact the tunneling interference physics of this device.
