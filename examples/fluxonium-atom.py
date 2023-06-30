@@ -65,31 +65,20 @@ Ej = 9.4e9
 alpha = 0.006
 
 # Derive the component values
-C = 0.5*pc.e**2/(pc.h*Ec)
-L = 0.5*pc.phi0**2/(pc.h*El*4*np.pi**2)
-I = 2*np.pi*pc.h*Ej/(pc.phi0)
+C = 0.5*pc.e**2/(pc.h*Ec) * 1e15
+L = 0.5*pc.phi0**2/(pc.h*El*4*np.pi**2) * 1e12
+I = 2*np.pi*pc.h*Ej/(pc.phi0) * 1e6
 # -
 
 hamil.setParameterValues(
-    'L', L*1e12,
-    'C1', C*1e15,
-    'I1', I*1e6,
-    'C2', C*1e15,
-    'I2', I*1e6,
+    'L', L,
+    'C1', C,
+    'I1', I,
+    'C2', C,
+    'I2', I,
     'phi+', 0.0,
     'phi-', 0.0
 )
-
-# We can check we have the energy scales roughly right
-
-for i in range(2):
-    print(hamil.getFluxEnergies(i+1))
-
-print(hamil.getJosephsonEnergies(graph.getComponentEdge('I1')))
-print(hamil.getJosephsonEnergies(graph.getComponentEdge('I2')))
-
-for i in range(2):
-    print(hamil.getChargingEnergies(i+1))
 
 # Configure the parameter sweep
 hamil.newSweep()
