@@ -82,23 +82,35 @@ class CircuitGraph:
         self._update_graphs()
         self._update_couplings_map((n1, n2, k))
 
-    def coupleBranchesInductively(self, inductor1, inductor2, component):
+    def coupleBranchesInductively(self, inductor1, inductor2, mutual_inductance):
         """ Couples two branches inductively.
         """
-        # Check the edges are inductive
-        if component[0] != self._element_prefixes[4]:
+        if mutual_inductance[0] != self._element_prefixes[4]:
             raise TypeError("Branch coupling component must be a mutual inductance.")
+        if mutual_inductance in self.coupled_branches:
+            raise ValueError("Branch coupling component '%s' already in use." % mutual_inductance)
+
+        # Check the edges are inductive
         edge1 = self.getComponentEdge(inductor1)
         edge2 = self.getComponentEdge(inductor2)
         if not self.isInductiveEdge(edge1):
             raise TypeError("The selected component %s is not an inductor." % inductor1)
         if not self.isInductiveEdge(edge2):
             raise TypeError("The selected component %s is not an inductor." % inductor2)
+
+        # Get the edges from the spanning tree
         alt_edge1 = (edge1[1], edge1[0], edge1[2])
         alt_edge2 = (edge2[1], edge2[0], edge2[2])
         edge1 = alt_edge1 if edge1 not in self.sc_spanning_tree_wc.edges else edge1
         edge2 = alt_edge2 if edge2 not in self.sc_spanning_tree_wc.edges else edge2
-        self.coupled_branches[component] = (edge1, edge2)
+
+        # Check we aren't overwriting an existing mapping
+        for M, edges in self.coupled_branches.items():
+            if {edge1, edge2} == set(edges):
+                raise ValueError("Inductors '%s' and '%s' are already coupled." % (inductor1, inductor2))
+
+        # Update mapping
+        self.coupled_branches[mutual_inductance] = (edge1, edge2)
 
     def coupleResonatorCapacitively(self, node, component):
         """ Couples a linear resonator capacitively.

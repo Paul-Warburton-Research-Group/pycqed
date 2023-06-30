@@ -252,3 +252,26 @@ class CircuitGraphTest(unittest.TestCase):
 
         # Cannot add a flux bias to an element that is not part of a superconducting loop
         self.assertRaises(TypeError, graph.addFluxBias, "I1", "Z1")
+
+    def test_mutual_inductance(self):
+        graph = CircuitGraph()
+        graph.addBranch(0, 1, "L1")
+        graph.addBranch(0, 1, "I1")
+        graph.addBranch(0, 1, "C1")
+        graph.addBranch(0, 2, "L2")
+        graph.addBranch(0, 2, "I2")
+        graph.addBranch(0, 2, "C2")
+
+        # Can couple inductive branches
+        graph.coupleBranchesInductively("L1", "L2", "M")
+
+        # Cannot couple non inductive branches
+        self.assertRaises(TypeError, graph.coupleBranchesInductively, "I1", "L2", "M1")
+        self.assertRaises(TypeError, graph.coupleBranchesInductively, "L1", "I2", "M2")
+        self.assertRaises(TypeError, graph.coupleBranchesInductively, "I1", "I2", "M3")
+
+        # Cannot use the same mutual name twice
+        self.assertRaises(ValueError, graph.coupleBranchesInductively, "L1", "L2", "M")
+
+        # Cannot couple the same inductors twice
+        self.assertRaises(ValueError, graph.coupleBranchesInductively, "L1", "L2", "M4")
