@@ -803,6 +803,10 @@ class NumericalSystem(ds.TempData):
     ## Set the value of a parameter.
     def setParameterValue(self, name, value):
         self.SS.setParameterValue(name, value)
+        params = self.getParameterValuesDict()
+        assert all(value is not None for value in params.values()), \
+               "Some parameters do not have valid values. All parameters should be set first with the " \
+               "setParameterValues function in one go."
         self.substitute()
         self.prepareOperators()
     
@@ -813,6 +817,9 @@ class NumericalSystem(ds.TempData):
     ## Set many parameter values.
     def setParameterValues(self, *name_value_pairs):
         self.SS.setParameterValues(*name_value_pairs)
+        params = self.getParameterValuesDict()
+        assert all(value is not None for value in params.values()), "Not all parameters were set in this call. " \
+               f"The missing parameters are {repr([name for name, value in params.items() if value is None])}"
         self.substitute()
         self.prepareOperators()
     
@@ -911,7 +918,6 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     #       Internal Functions
     ###################################################################################################################
-
     def _evaluate_single(self, timesweep):
         results = []
         entry = self.evaluations[0]
@@ -1238,15 +1244,3 @@ class NumericalSystem(ds.TempData):
                     self.SS.addParameterisationPrefactor(resonator["gC"], self.units.getPrefactor('ChgOscCpl'))
                     self.SS.addParameterisationPrefactor(resonator["frl"], self.units.getPrefactor('Freq'))
                     self.SS.addParameterisationPrefactor(resonator["Zrl"], self.units.getPrefactor('Impe'))
-
-
-
-
-
-
-
-
-
-
-
-
