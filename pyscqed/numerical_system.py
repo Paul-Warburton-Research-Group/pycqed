@@ -495,18 +495,18 @@ class NumericalSystem(ds.TempData):
     
     def getHamiltonian(self):
         # Get charging energy
-        self.Hq = self.units.getPrefactor("Ec")*0.5*\
+        Hq = self.units.getPrefactor("Ec")*0.5*\
         util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
         
         # Get flux energy
-        self.Hf = self.units.getPrefactor("El")*0.5*\
+        Hf = self.units.getPrefactor("El")*0.5*\
         util.mdot((self.Pnp + self.Pbinp).T, self.Linvnp, self.Pnp + self.Pbinp)[0, 0]
         
         # Need the branch DoFs in the possibly transformed representation
         Pp = self.SS.Rnb*self.SS.Rinv*self.SS.node_vector
         
         # Get the Josephson energy
-        self.Hj = 0
+        Hj = 0
         for i, edge in enumerate(self.SS.edges):
             if self.Jvecnp[i] == 0.0:
                 continue
@@ -538,11 +538,11 @@ class NumericalSystem(ds.TempData):
                     prod1 *= self.circ_operators[node]["disp_adj"]
                     prod2 *= self.circ_operators[node]["disp"]
         
-            self.Hj += -0.5*self.Jvecnp[i]*(prod1 + prod2)
-        self.Hj *= self.units.getPrefactor("Ej")
+            Hj += -0.5*self.Jvecnp[i]*(prod1 + prod2)
+        Hj *= self.units.getPrefactor("Ej")
         
         # Get the Phaseslip energy
-        self.Hp = 0
+        Hp = 0
         for i, edge in enumerate(self.SS.edges):
             if self.Pvecnp[i] == 0.0:
                 continue
@@ -574,12 +574,11 @@ class NumericalSystem(ds.TempData):
                     prod1 *= self.circ_operators[node]["pdisp_adj"]
                     prod2 *= self.circ_operators[node]["pdisp"]
         
-            self.Hp += -0.5*self.Pvecnp[i]*(prod1 + prod2)
-        self.Hp *= self.units.getPrefactor("Ep")
+            Hp += -0.5*self.Pvecnp[i]*(prod1 + prod2)
+        Hp *= self.units.getPrefactor("Ep")
         
         # Total Hamiltonian
-        self.Ht = (self.Hq + self.Hf + self.Hj + self.Hp)
-        return self.Ht
+        return (Hq + Hf + Hj + Hp)
     
     def getCurrentOperator(self, edge=None):
         # Check edge
