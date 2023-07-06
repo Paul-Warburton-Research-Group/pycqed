@@ -134,22 +134,18 @@ plt.ylabel("$E_{g,0}$ (GHz)")
 # We see that beyond a certain inductance for the given parameters, the minimum gap closes to negligible value. To see why this happens we can analyse the potential of the system at half-flux:
 
 # +
-x = np.linspace(-0.5,0.5,201)
-Ej = Aj*Jc*hamil.getPrefactor('Ej')
-L1 = 500
-El = 0.5*hamil.getPrefactor('El')/L1
-V1 = -Ej*np.cos((x+0.5)*2*np.pi) + El*x**2
+hamil.setParameterValue("L", 500.0)
+potential, inputs = hamil.getClassicalPotentialFunction()
+V1 = potential({'phi1': x, 'phiZ': 0.0})
 
-L2 = 1000
-El = 0.5*hamil.getPrefactor('El')/L2
-V2 = -Ej*np.cos((x+0.5)*2*np.pi) + El*x**2
-# -
+hamil.setParameterValue("L", 1000.0)
+potential, inputs = hamil.getClassicalPotentialFunction()
+V2 = potential({'phi1': x, 'phiZ': 0.0})
 
-# Above we used the `getPrefactor` function to get the prefactors that ensure quantities are in consistent units. Here in GHz.
-
-plt.plot(x,V1,label="$L=%.1f$"%500)
-plt.plot(x,V2,label="$L=%.1f$"%1000)
+plt.plot(x, V1, label="$L=%.1f$"%500)
+plt.plot(x, V2, label="$L=%.1f$"%1000)
 plt.legend()
+# -
 
 # Indeed we see that when the inductance is large the Josephson energy influences the potential much more and forms a deeper double well, reducing the tunnel rate.
 
@@ -222,13 +218,19 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 circuit.getClassicalHamiltonian()
 
-p1 = np.linspace(-1.0,1.0,201)
-p2 = np.linspace(-1.0,1.0,201)
-p1g,p2g = np.meshgrid(p1,p2)
+potential, inputs = hamil.getClassicalPotentialFunction()
+inputs
 
-Ej = Jc*Aj*hamil.getPrefactor('Ej')
-V1=-Ej*(np.cos(p1g*2*np.pi)+np.cos((p1g-p2g)*2*np.pi)+np.cos((p2g+0.5)*2*np.pi))
-V2=-Ej*(np.cos(p1g*2*np.pi)+np.cos((p1g-p2g)*2*np.pi)+np.cos((p2g+0.0)*2*np.pi))
+p1 = np.linspace(-1.0, 1.0, 201)
+p2 = np.linspace(-1.0, 1.0, 201)
+p1g, p2g = np.meshgrid(p1, p2)
+inputs['phi1'] = p1g
+inputs['phi2'] = p2g
+
+inputs['phiZ'] = 0.5
+V1 = potential(inputs)
+inputs['phiZ'] = 0.0
+V2 = potential(inputs)
 
 # +
 fig, ax = plt.subplots(ncols=2,nrows=1,constrained_layout=True,figsize=(13,5))
@@ -283,9 +285,14 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Indeed we see that making one of the junctions smaller significantly increases the tunnel rate. We can compare the potential in this case:
 
-Ej = Jc*Aj*hamil.getPrefactor('Ej')
-Eja = alpha*Ej
-V1b=-Ej*(np.cos(p1g*2*np.pi) + np.cos((p2g+0.5)*2*np.pi)) - Eja*np.cos((p1g-p2g)*2*np.pi)
+potential, inputs = hamil.getClassicalPotentialFunction()
+inputs['phiZ'] = 0.5
+inputs['phi1'] = p1g
+inputs['phi2'] = p2g
+
+V1b = potential(inputs)
+
+V1b
 
 # +
 fig, ax = plt.subplots(ncols=2,nrows=1,constrained_layout=True,figsize=(13,5))

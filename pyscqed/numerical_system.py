@@ -1,6 +1,7 @@
 import qutip as qt
 import numpy as np
 import sympy as sy
+import sympy.utilities as syu
 import scipy as sc
 import networkx as nx
 import progress.bar
@@ -298,11 +299,19 @@ class NumericalSystem(ds.TempData):
         self.getExpandedOperatorsMap()
         self.getChargeOpVector()
         self.getFluxOpVector()
-    
+
+    ###################################################################################################################
+    #       Analysis Support
+    ###################################################################################################################
+    def getClassicalPotentialFunction(self):
+        """Returns a function that takes the flux circuit degrees of freedom and the flux bias terms as scalars and
+        returns the potential energy at those coordinates. It can be used with numpy arrays too."""
+        builder = ClassicalPotentialBuilder(self)
+        return builder.getPotentialFunction(), builder.getDefaultInputs()
+
     ###################################################################################################################
     #       Numerical Hamiltonian Generation
     ###################################################################################################################
-    
     def substitute(self):
         
         subs = self.SS.getSymbolValuesDict()
@@ -495,18 +504,18 @@ class NumericalSystem(ds.TempData):
     
     def getHamiltonian(self):
         # Get charging energy
-        self.Hq = self.units.getPrefactor("Ec")*0.5*\
+        Hq = self.units.getPrefactor("Ec")*0.5*\
         util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
         
         # Get flux energy
-        self.Hf = self.units.getPrefactor("El")*0.5*\
+        Hf = self.units.getPrefactor("El")*0.5*\
         util.mdot((self.Pnp + self.Pbinp).T, self.Linvnp, self.Pnp + self.Pbinp)[0, 0]
         
         # Need the branch DoFs in the possibly transformed representation
         Pp = self.SS.Rnb*self.SS.Rinv*self.SS.node_vector
         
         # Get the Josephson energy
-        self.Hj = 0
+        Hj = 0
         for i, edge in enumerate(self.SS.edges):
             if self.Jvecnp[i] == 0.0:
                 continue
@@ -538,11 +547,11 @@ class NumericalSystem(ds.TempData):
                     prod1 *= self.circ_operators[node]["disp_adj"]
                     prod2 *= self.circ_operators[node]["disp"]
         
-            self.Hj += -0.5*self.Jvecnp[i]*(prod1 + prod2)
-        self.Hj *= self.units.getPrefactor("Ej")
+            Hj += -0.5*self.Jvecnp[i]*(prod1 + prod2)
+        Hj *= self.units.getPrefactor("Ej")
         
         # Get the Phaseslip energy
-        self.Hp = 0
+        Hp = 0
         for i, edge in enumerate(self.SS.edges):
             if self.Pvecnp[i] == 0.0:
                 continue
@@ -574,12 +583,11 @@ class NumericalSystem(ds.TempData):
                     prod1 *= self.circ_operators[node]["pdisp_adj"]
                     prod2 *= self.circ_operators[node]["pdisp"]
         
-            self.Hp += -0.5*self.Pvecnp[i]*(prod1 + prod2)
-        self.Hp *= self.units.getPrefactor("Ep")
+            Hp += -0.5*self.Pvecnp[i]*(prod1 + prod2)
+        Hp *= self.units.getPrefactor("Ep")
         
         # Total Hamiltonian
-        self.Ht = (self.Hq + self.Hf + self.Hj + self.Hp)
-        return self.Ht
+        return (Hq + Hf + Hj + Hp)
     
     def getCurrentOperator(self, edge=None):
         # Check edge
@@ -804,6 +812,10 @@ class NumericalSystem(ds.TempData):
     ## Set the value of a parameter.
     def setParameterValue(self, name, value):
         self.SS.setParameterValue(name, value)
+        params = self.getParameterValuesDict()
+        assert all(value is not None for value in params.values()), \
+               "Some parameters do not have valid values. All parameters should be set first with the " \
+               "setParameterValues function in one go."
         self.substitute()
         self.prepareOperators()
     
@@ -814,6 +826,9 @@ class NumericalSystem(ds.TempData):
     ## Set many parameter values.
     def setParameterValues(self, *name_value_pairs):
         self.SS.setParameterValues(*name_value_pairs)
+        params = self.getParameterValuesDict()
+        assert all(value is not None for value in params.values()), "Not all parameters were set in this call. " \
+               f"The missing parameters are {repr([name for name, value in params.items() if value is None])}"
         self.substitute()
         self.prepareOperators()
     
@@ -912,7 +927,6 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     #       Internal Functions
     ###################################################################################################################
-
     def _evaluate_single(self, timesweep):
         results = []
         entry = self.evaluations[0]
@@ -1241,13 +1255,66 @@ class NumericalSystem(ds.TempData):
                     self.SS.addParameterisationPrefactor(resonator["Zrl"], self.units.getPrefactor('Impe'))
 
 
+class ClassicalPotentialBuilder:
+    """Used internally to build a numerical classical potential energy getter as a function of all the parameters.
+    """
+    def __init__(self, hamil):
+        self._hamil = hamil
+        self._dof_map = {}
+        self._critical_currents = self._hamil.getPrefactor('Ej') * self._get_critical_currents()
+        self._inverse_inductance_matrix = 0.5 * hamil.getPrefactor('El') * self._hamil.Linvnp
+        self._dof_symbol_vector = self._hamil.SS.getFluxVector(mode="branch") + \
+                                 self._hamil.SS.getFluxBiasVector(mode="branch")
+        self._get_input_format()
+        self._symbolic_inductive_energy = self._get_symbolic_inductive_energy()
 
+        # Create numerical functions
+        self.jj_func = syu.lambdify(list(self._dof_map.values()), self._dof_symbol_vector)
+        self.ind_func = syu.lambdify(list(self._dof_map.values()), self._symbolic_inductive_energy)
 
+    def _get_critical_currents(self):
+        subs = self._hamil.SS.getSymbolValuesDict()
+        assert all(val is not None for val in subs.values()), "All parameters need to be initialized"
+        Jvec = self._hamil.SS.getJosephsonVector().transpose().subs(subs)
+        return np.array(Jvec).astype(np.float64)
 
+    def _get_symbolic_inductive_energy(self):
+        P = self._hamil.SS.getFluxVector()
+        Pe = self._hamil.SS.getFluxBiasVectorInd()
+        expr = (P + Pe).transpose() * sy.Matrix(self._inverse_inductance_matrix) * (P + Pe)
+        return expr[0, 0]
 
+    def _get_input_format(self):
+        # Get the DoF symbol-node map
+        self._dof_map = {"phi%i" % n: sym[0] for n, sym in self._hamil.SS.node_dofs.items() if n > 0}
 
+        # Get the bias symbols
+        bias_terms = self._hamil.SS.getFluxBiasVector(mode="branch").free_symbols
+        for sym in bias_terms:
+            name = self._hamil.SS.getParameterFromSymbol(sym)
+            self._dof_map[name] = sym
 
+    def getDefaultInputs(self):
+        return {name: 0.0 for name in self._dof_map}
 
+    def getPotentialFunction(self):
+        def potential(inputs):
+            # Check inputs
+            assert isinstance(inputs, dict), "inputs should be a dict instance"
+            for name in self._dof_map:
+                assert name in inputs, f"expected attribute {name} in inputs"
+                assert isinstance(inputs[name], (float, int, np.float64, np.ndarray))
 
+            # Order the arguments correctly
+            args = [inputs[name] for name in self._dof_map]
 
+            # Turn the JJ vector into numerical function and get the values
+            result = 0.0
+            for i, I in enumerate(self._critical_currents[0]):
+                result += I*np.cos(2*np.pi*self.jj_func(*args)[i, 0])
 
+            # Calculate the inductive terms
+            result += self.ind_func(*args)
+            return result
+
+        return potential
