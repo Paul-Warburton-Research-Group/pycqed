@@ -98,9 +98,8 @@ def diagSparseH(M, eigvalues=5, get_vectors=False, sparsesolveropts={"sigma":Non
     if not M.isherm:
         raise Exception("matrix object is not Hermitian.")
     
-    # Diagonalize with sparse matrix (default Qobj storage)
-    #ret = sc.sparse.linalg.eigsh(sc.sparse.csr_matrix(M.data.todense()),k=eigvalues,return_eigenvectors=get_vectors,**sparsesolveropts)
-    ret = sc.sparse.linalg.eigsh(M.data,k=eigvalues,return_eigenvectors=get_vectors,**sparsesolveropts)
+    # Diagonalize with sparse matrix
+    ret = sc.sparse.linalg.eigsh(M.to("CSR").data.as_scipy(), k=eigvalues, return_eigenvectors=get_vectors, **sparsesolveropts)
     
     # Sort the results
     if get_vectors:
@@ -151,7 +150,7 @@ def diagDenseH(M, eigvalues=5, get_vectors=False, sparsesolveropts=None):
     #    raise Exception("matrix object is not Hermitian.")
     
     # Diagonalize with dense matrix.
-    ret = sc.linalg.eigh(M.data.todense(), eigvals_only=(not get_vectors), eigvals=(0, eigvalues-1))
+    ret = sc.linalg.eigh(M.data.to_array(), eigvals_only=(not get_vectors), subset_by_index=(0, eigvalues-1))
     
     # Sort the results
     if get_vectors:
@@ -256,7 +255,7 @@ def isStoquastic(H, order=[2,3]):
     """
     
     # Get the Hamiltonian dimension
-    H = H.data.todense()
+    H = H.data.to_array()
     M = H.shape[0]
     
     # Get permutation matrices
@@ -338,9 +337,9 @@ def pauliCoefficients(E, V, basis_op):
         raise Exception("incompatible input types for E (%s), V (%s) and basis_op (%s)." % (type(E), type(V), type(basis_op)))
     
     # Get Paulis
-    ox = np.asmatrix(qt.sigmax().data.todense(), dtype=np.complex64)
-    oy = np.asmatrix(qt.sigmay().data.todense(), dtype=np.complex64)
-    oz = np.asmatrix(qt.sigmaz().data.todense(), dtype=np.complex64)
+    ox = np.asmatrix(qt.sigmax().data.to_array(), dtype=np.complex64)
+    oy = np.asmatrix(qt.sigmay().data.to_array(), dtype=np.complex64)
+    oz = np.asmatrix(qt.sigmaz().data.to_array(), dtype=np.complex64)
     
     # Get ground and first excited states
     E0 = E[0, :]

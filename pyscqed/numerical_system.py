@@ -93,7 +93,7 @@ class NumericalSystem(ds.TempData):
         return ret
     
     def sparsity(self, op):
-        return 1 - op.data.nnz/self.getHilbertSpaceSize()**2
+        return 1 - op.to("CSR").data.as_scipy().nnz/self.getHilbertSpaceSize()**2
     
     ###################################################################################################################
     #       Operator Generation and Functions
@@ -113,7 +113,7 @@ class NumericalSystem(ds.TempData):
             mat = 1 - (enum)*vnum*vnum.dag()
             
             # Invert it
-            corrmat = qt.Qobj(np.linalg.inv(mat.data.todense()))
+            corrmat = qt.Qobj(np.linalg.inv(mat.data.to_array()))
             
             # Get the correct commutator
             return qt.commutator(P, Q)*corrmat
@@ -587,7 +587,7 @@ class NumericalSystem(ds.TempData):
         Hp *= self.units.getPrefactor("Ep")
         
         # Total Hamiltonian
-        return (Hq + Hf + Hj + Hp)
+        return (Hq + Hf + Hj + Hp).tidyup(1e-12)
     
     def getCurrentOperator(self, edge=None):
         # Check edge
@@ -1075,7 +1075,7 @@ class NumericalSystem(ds.TempData):
         Qp = b*np.pi/pc.e*np.sqrt(pc.hbar)*Q/self.units.getPrefactor("ChgOsc")
         
         # Generate Josephson displacement operators by first diagonalising the flux operator
-        E, V = np.linalg.eigh(Pp.data.todense())
+        E, V = np.linalg.eigh(Pp.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1086,7 +1086,7 @@ class NumericalSystem(ds.TempData):
         Ddag = D.dag()
         
         # Generate Phase Slip displacement operators by first diagonalising the charge operator
-        E, V = np.linalg.eigh(Qp.data.todense())
+        E, V = np.linalg.eigh(Qp.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1108,7 +1108,7 @@ class NumericalSystem(ds.TempData):
         phik = None
         qm = [float(i)-trunc for i in range(2*trunc + 1)]
         for k in qm:
-            phik = qt.basis(2*trunc + 1, 0) - 1
+            phik = qt.basis(2*trunc + 1, 0) * 0
             for j, qi in enumerate(qm):
                 phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
             phik_list.append(phik)
@@ -1123,7 +1123,7 @@ class NumericalSystem(ds.TempData):
         Q = -qt.num(2*trunc + 1)+float(trunc)
         
         # Generate Josephson displacement operators by first diagonalising the flux operator
-        E, V = np.linalg.eigh(P.data.todense())
+        E, V = np.linalg.eigh(P.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1150,7 +1150,7 @@ class NumericalSystem(ds.TempData):
         phik = None
         qm = [float(i)-trunc for i in range(2*trunc + 1)]
         for k in qm:
-            phik = qt.basis(2*trunc + 1, 0) - 1
+            phik = qt.basis(2*trunc + 1, 0) * 0
             for j, qi in enumerate(qm):
                 phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
             phik_list.append(phik)
@@ -1162,7 +1162,7 @@ class NumericalSystem(ds.TempData):
             Q += phik_eigvals[i]*phik*phik.dag()
         
         # Generate Josephson displacement operators by first diagonalising the flux operator
-        E, V = np.linalg.eigh(P.data.todense())
+        E, V = np.linalg.eigh(P.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1173,7 +1173,7 @@ class NumericalSystem(ds.TempData):
         Ddag = D.dag()
         
         # Generate Phase displacement operators by first diagonalising the charge operator
-        E, V = np.linalg.eigh(Q.data.todense())
+        E, V = np.linalg.eigh(Q.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1199,7 +1199,7 @@ class NumericalSystem(ds.TempData):
         phik = None
         qm = [float(i)-trunc for i in range(2*trunc + 1)]
         for k in qm:
-            phik = qt.basis(2*trunc + 1, 0) - 1
+            phik = qt.basis(2*trunc + 1, 0) * 0
             for j, qi in enumerate(qm):
                 phik += np.sqrt(1/(2*trunc + 1)) * np.exp(2j*np.pi*k*qi/(2*trunc + 1))*s[j]
             phik_list.append(phik)
@@ -1213,7 +1213,7 @@ class NumericalSystem(ds.TempData):
         Q = Q/(grid[1]-grid[0])
         
         # Generate Josephson displacement operators by first diagonalising the flux operator
-        E, V = np.linalg.eigh(P.data.todense())
+        E, V = np.linalg.eigh(P.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
@@ -1224,7 +1224,7 @@ class NumericalSystem(ds.TempData):
         Ddag = D.dag()
         
         # Generate Phase displacement operators by first diagonalising the charge operator
-        E, V = np.linalg.eigh(Q.data.todense())
+        E, V = np.linalg.eigh(Q.data.to_array())
         
         # Create transformation matrices
         U = qt.Qobj(V)
