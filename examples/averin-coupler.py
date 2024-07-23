@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.6
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -1021,5 +1021,4 @@ plt.xlabel("$\\Phi_{e}$ ($\\Phi_0$)")
 plt.ylabel("$\omega_{r}$ (GHz)")
 plt.title("Resonator Modulation Against $\\Phi_{e}$ at $Q_{c}=e$")
 # -
-
 

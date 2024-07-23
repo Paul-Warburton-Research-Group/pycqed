@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.6
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -507,7 +507,7 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 # +
 hamil.newSweep()
-hamil.addSweep('phiZ', 0.0, 1.0, 101)
+hamil.addSweep('phiZ', 0.45, 0.55, 101)
 
 # Configure diagonalizer
 opts = {
