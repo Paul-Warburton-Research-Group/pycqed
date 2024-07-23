@@ -15,6 +15,9 @@ from . import physical_constants as pc
 from . import util
 from . import units
 
+_qobj_atol = 1e-12
+
+
 class NumericalSystem(ds.TempData):
     
     ## Mode types
@@ -587,7 +590,7 @@ class NumericalSystem(ds.TempData):
         Hp *= self.units.getPrefactor("Ep")
         
         # Total Hamiltonian
-        return (Hq + Hf + Hj + Hp).tidyup(1e-12)
+        return (Hq + Hf + Hj + Hp).tidyup(_qobj_atol)
     
     def getCurrentOperator(self, edge=None):
         # Check edge
@@ -1095,7 +1098,14 @@ class NumericalSystem(ds.TempData):
         # Exponentiate the diagonal matrix
         S = U*qt.Qobj(np.diag(np.exp(1j*E)))*Uinv
         Sdag = S.dag()
-        return Q, P, D, Ddag, S, Sdag
+        return (
+            Q.to("CSR").tidyup(_qobj_atol),
+            P.to("CSR").tidyup(_qobj_atol),
+            D.to("CSR").tidyup(_qobj_atol),
+            Ddag.to("CSR").tidyup(_qobj_atol),
+            S.to("CSR").tidyup(_qobj_atol),
+            Sdag.to("CSR").tidyup(_qobj_atol)
+        )
     
     def _get_charge_basis(self, node):
         trunc = self.operator_data[node]["truncation"]
@@ -1136,7 +1146,14 @@ class NumericalSystem(ds.TempData):
         # Generate Phase Slip displacement operators by just exponentiating the charge operator, which is diagonal already in this case
         S = qt.Qobj(np.diag(np.exp(-2j*np.pi*q)))
         Sdag = S.dag()
-        return Q, P, D, Ddag, S, Sdag
+        return (
+            Q.to("CSR").tidyup(_qobj_atol),
+            P.to("CSR").tidyup(_qobj_atol),
+            D.to("CSR").tidyup(_qobj_atol),
+            Ddag.to("CSR").tidyup(_qobj_atol),
+            S.to("CSR").tidyup(_qobj_atol),
+            Sdag.to("CSR").tidyup(_qobj_atol)
+        )
     
     def _get_flux_basis(self, node):
         trunc = self.operator_data[node]["truncation"]
@@ -1182,7 +1199,14 @@ class NumericalSystem(ds.TempData):
         # Exponentiate the diagonal matrix
         S = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
         Sdag = S.dag()
-        return Q, P, D, Ddag, S, Sdag
+        return (
+            Q.to("CSR").tidyup(_qobj_atol),
+            P.to("CSR").tidyup(_qobj_atol),
+            D.to("CSR").tidyup(_qobj_atol),
+            Ddag.to("CSR").tidyup(_qobj_atol),
+            S.to("CSR").tidyup(_qobj_atol),
+            Sdag.to("CSR").tidyup(_qobj_atol)
+        )
     
     def _get_discretized_flux_basis(self, node):
         trunc = self.operator_data[node]["truncation"]
@@ -1233,7 +1257,14 @@ class NumericalSystem(ds.TempData):
         # Exponentiate the diagonal matrix
         S = U*qt.Qobj(np.diag(np.exp(-2j*np.pi*E)))*Uinv - qt.basis(2*trunc+1, 2*trunc)*qt.basis(2*trunc+1, 0).dag()
         Sdag = S.dag()
-        return Q, P, D, Ddag, S, Sdag
+        return (
+            Q.to("CSR").tidyup(_qobj_atol),
+            P.to("CSR").tidyup(_qobj_atol),
+            D.to("CSR").tidyup(_qobj_atol),
+            Ddag.to("CSR").tidyup(_qobj_atol),
+            S.to("CSR").tidyup(_qobj_atol),
+            Sdag.to("CSR").tidyup(_qobj_atol)
+        )
     
     # FIXME: This causes issues when regenerating code
     def _set_parameter_units(self):
