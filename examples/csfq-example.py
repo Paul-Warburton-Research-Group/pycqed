@@ -507,7 +507,7 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 
 # +
 hamil.newSweep()
-hamil.addSweep('phiZ', 0.0, 1.0, 101)
+hamil.addSweep('phiZ', 0.45, 0.55, 101)
 
 # Configure diagonalizer
 opts = {
