@@ -15,6 +15,7 @@ from . import physical_constants as pc
 from . import util
 from . import units
 
+# Local override for the Qobj tolerance. The global settings appear to not work
 _qobj_atol = 1e-12
 
 
