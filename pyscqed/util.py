@@ -108,7 +108,9 @@ def diagSparseH(M, eigvalues=5, get_vectors=False, sparsesolveropts={"sigma":Non
         # Sort the eigenvalues and use new indices to sort vectors
         _zipped = list(zip(E, range(eigvalues)))
         _zipped.sort()
-        E, perm = list(zip(*_zipped))
+        E, perm = zip(*_zipped)
+        E = np.array(E)
+        perm = list(perm)
         
         # Convert the vectors to Qobj while sorting and set their dimensions based on that of the original operator
         Vt = np.empty(len(perm), dtype=qt.qobj.Qobj)
@@ -159,7 +161,9 @@ def diagDenseH(M, eigvalues=5, get_vectors=False, sparsesolveropts=None):
         # Sort the eigenvalues and use new indices to sort vectors
         _zipped = list(zip(E, range(eigvalues)))
         _zipped.sort()
-        E, perm = list(zip(*_zipped))
+        E, perm = zip(*_zipped)
+        E = np.array(E)
+        perm = list(perm)
         
         # Convert the vectors to Qobj while sorting and set their dimensions based on that of the original operator
         Vt = np.empty(len(perm), dtype=qt.qobj.Qobj)

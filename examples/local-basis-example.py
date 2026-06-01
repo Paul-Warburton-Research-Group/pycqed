@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -13,9 +13,11 @@
 # ---
 
 import qutip as qt
+import numpy as np
 import matplotlib.pyplot as plt
 from pyscqed import *
 from pyscqed.util import *
+from pyscqed.evaluation_graph import EvaluationGraph
 
 # ## Local Basis Reduction Example
 #
@@ -64,25 +66,30 @@ JJedge
 
 # The current operator associated with the JJ depends on the external flux, and thus we need to obtain the operator at each flux point. We are interested in the ground state persistent current. We can get this information during a parameter sweep using the `current` evaluable, specifying the elements we wish to obtain using a set of matrix element indices:
 
-hamil.addSweep('phiZ', 0.49, 0.51, 101)
-hamil.addEvaluation('Hamiltonian')
-hamil.addEvaluation('Current', edge=JJedge, elements=[(0, 0)])
-sweep = hamil.paramSweep(timesweep=True)
+eval_graph = EvaluationGraph()
+eval_graph.addNode("Hamiltonian", fn=hamil.getHamiltonian, outputs=["qobj"])
+eval_graph.addNode("Spectrum", fn=hamil.diagonalize, outputs=["energies", "vectors"])
+eval_graph.addNode("Current", fn=hamil.getCurrentMatrixElement, outputs=["elements"], static_inputs={"edge": JJedge, "elements": [(0, 0)]})
+eval_graph.addDependency("Hamiltonian", "Spectrum")
+eval_graph.addDependency("Spectrum", "Current", preserve_source_outputs=True)
+
+sweep_config = hamil.newSweepConfig()
+sweep_config.setEvaluationGraph(eval_graph)
+sweep_config.add('phiZ', np.linspace(0.49, 0.51, 101))
+sweep = hamil.runSweep(sweep_config)
+x = sweep.getInputPoints('phiZ')
+E = sweep.getNumericalOutput('phiZ', eval_output=("Spectrum", "energies")).T  # [n_states, n_points]
+V = sweep.getNumericalOutput('phiZ', eval_output=("Spectrum", "vectors")).T   # [n_states, n_points]
+I00 = sweep.getNumericalOutput('phiZ', eval_output=("Current", "elements")).T  # [n_elements, n_points]
 
 # Get the Hamiltonian eigenvalues and vectors first:
 
-x, EV, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Hamiltonian')
-E = EV[:,0]
-V = EV[:,1]
-
 for i in range(3):
-    plt.plot(x,E[i]-E[0])
+    plt.plot(x, E[i]-E[0])
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now get the branch current:
-
-x, I00, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Current')
 
 # Note that we only asked for one matrix element and so the current array for that element is at index 0:
 
@@ -171,23 +178,29 @@ hamil.setDiagConfig(get_vectors=True)
 
 # In this case the voltage operator is different at each value of applied gate voltage. It is then more convenient to construct a low energy subspace voltage operator out of the matrix elements corresponding to the lowest energy:
 
-hamil.addSweep('QZ', 0.4, 0.6, 101)
-hamil.addEvaluation('Hamiltonian')
-hamil.addEvaluation('Voltage', node=1, elements=[(0, 0), (0, 1), (1, 0), (1, 1)])
-sweep = hamil.paramSweep(timesweep=True)
+static = {"node": 1, "elements": [(0, 0), (0, 1), (1, 0), (1, 1)]}
+eval_graph_cpb = EvaluationGraph()
+eval_graph_cpb.addNode("Hamiltonian", fn=hamil.getHamiltonian, outputs=["qobj"])
+eval_graph_cpb.addNode("Spectrum", fn=hamil.diagonalize, outputs=["energies", "vectors"])
+eval_graph_cpb.addNode("Voltage", fn=hamil.getVoltageMatrixElement, outputs=["elements"], static_inputs=static)
+eval_graph_cpb.addDependency("Hamiltonian", "Spectrum")
+eval_graph_cpb.addDependency("Spectrum", "Voltage", preserve_source_outputs=True)
 
-x,EV,v = hamil.getSweep(sweep, 'QZ', {}, evaluable='Hamiltonian')
-E = EV[:,0]
-V = EV[:,1]
+sweep_config = hamil.newSweepConfig()
+sweep_config.setEvaluationGraph(eval_graph_cpb)
+sweep_config.add('QZ', np.linspace(0.4, 0.6, 101))
+sweep = hamil.runSweep(sweep_config)
+x = sweep.getInputPoints('QZ')
+E = sweep.getNumericalOutput('QZ', eval_output=("Spectrum", "energies")).T   # [n_states, n_points]
+V = sweep.getNumericalOutput('QZ', eval_output=("Spectrum", "vectors")).T    # [n_states, n_points]
+Vii = sweep.getNumericalOutput('QZ', eval_output=("Voltage", "elements")).T  # [n_elements, n_points]
 
 for i in range(2):
-    plt.plot(x,E[i]-E[0])
+    plt.plot(x, E[i]-E[0])
 plt.xlabel("$Q_{Z}$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now get the node voltage operator matrix elements:
-
-x, Vii, v = hamil.getSweep(sweep, 'QZ', {}, evaluable='Voltage')
 
 plt.plot(x, Vii[0])
 plt.plot(x, Vii[1])

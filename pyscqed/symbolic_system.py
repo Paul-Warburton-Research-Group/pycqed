@@ -79,9 +79,9 @@ class SymbolicSystem(ParamCollection):
         
         # Get coordinate transformation matrices
         self._create_coordinate_transforms()
-        if not quiet:
-            print("Optimal basis representations for the circuit coordinates:")
-            print(self.coordinate_modes)
+        #if not quiet:
+        #    print("Optimal basis representations for the circuit coordinates:")
+        #    print(self.coordinate_modes)
         
         # Populate the degrees of freedom
         self._create_node_dofs()

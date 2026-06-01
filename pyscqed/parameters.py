@@ -753,6 +753,9 @@ class ParamCollection:
                         pnames.append(pname)
         return pnames
     
+    def getParameterisationSuccessors(self, name: str) -> dict[sy.Symbol, str]:
+        return nx.dfs_successors(self.__parameterisation_graph, name)
+    
     def drawParameterisationGraph(self, filename=None):
         # Get the pydot graph
         pd_graph = nx.nx_pydot.to_pydot(self.__parameterisation_graph)

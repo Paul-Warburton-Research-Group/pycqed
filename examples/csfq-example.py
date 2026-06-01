@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -89,45 +89,48 @@ E[1]-E[0]
 #
 # Now lets perform a sweep over the flux bias and plot the five first energy gaps. Parameter sweeping can be done with multiple parameters simultaneously using the `sweepSpec` method derived from the `ParamCollection` class. Here the default configuration of the diagonaliser and parameter sweeper is used. By default a dense matrix diagonaliser is used, and the Hamiltonian is diagonalised for the first five eigenvalues only.
 
-hamil.newSweep()
-hamil.addSweep('phiZ', -1.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(-1.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 
-# The sweep is then retrieved using the `getSweep` method, which can be used for disentangling results and plotting sweeps along different dimensions of the sweep, as well as extracting results of functions other than `getHamiltonian`. Here there was only one dimensions, and we can look at the first 5 levels and take their difference with the ground level:
+# The sweep is then retrieved using the `getNumericalOutput` method, which can be used for disentangling results and plotting sweeps along different dimensions of the sweep. Here there was only one dimension, and we can look at the first 5 levels and take their difference with the ground level:
 
-x,sweep_nosh,v = hamil.getSweep(sweep,'phiZ',{})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep_nosh[i] - sweep_nosh[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now say we wish to look at the flux dependence of the minimum gap for a few values of inductance, we can perform these sweeps in a compact way using the same method as above, however we now need to retrieve the results of the sweep for each value of inductance:
 
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.45, 0.55, 101)
-hamil.addSweep('L', 400, 600, 3)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.45, 0.55, 101))
+sweep_config.add('L', np.linspace(400, 600, 3))
+sweep = hamil.runSweep(sweep_config)
 
-x1,sweep1,v1 = hamil.getSweep(sweep,'phiZ',{"L":400.0})
-x2,sweep2,v2 = hamil.getSweep(sweep,'phiZ',{"L":500.0})
-x3,sweep3,v3 = hamil.getSweep(sweep,'phiZ',{"L":600.0})
-plt.plot(x1,sweep1[1]-sweep1[0],label="$L=%.1f$"%v1["L"])
-plt.plot(x2,sweep2[1]-sweep2[0],label="$L=%.1f$"%v2["L"])
-plt.plot(x3,sweep3[1]-sweep3[0],label="$L=%.1f$"%v3["L"])
+E1 = sweep.getNumericalOutput('phiZ', {"L": 400.0})
+E2 = sweep.getNumericalOutput('phiZ', {"L": 500.0})
+E3 = sweep.getNumericalOutput('phiZ', {"L": 600.0})
+x = sweep.getInputPoints('phiZ')
+plt.plot(x, E1.T[1] - E1.T[0], label="$L=%.1f$" % 400.0)
+plt.plot(x, E2.T[1] - E2.T[0], label="$L=%.1f$" % 500.0)
+plt.plot(x, E3.T[1] - E3.T[0], label="$L=%.1f$" % 600.0)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,0}$ (GHz)")
 plt.legend()
 
 # We see that decreasing the inductance increases the minimum gap significantly but also reduces the rate of change of the energy near half-flux. We could now look at the dependence of the minimum gap against the inductance in more detail:
 
-hamil.setParameterValue('phiZ',0.5)
-hamil.newSweep()
-hamil.addSweep('L', 400, 1000, 101)
-sweep = hamil.paramSweep(timesweep=True)
+hamil.setParameterValue('phiZ', 0.5)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('L', np.linspace(400, 1000, 101))
+sweep = hamil.runSweep(sweep_config)
 
-x,sweep_L,v = hamil.getSweep(sweep,'L',{})
-plt.plot(x,sweep_L[1]-sweep_L[0])
+E = sweep.getNumericalOutput('L')
+x = sweep.getInputPoints('L')
+plt.plot(x, E.T[1] - E.T[0])
 plt.xlabel("$L$ (pH)")
 plt.ylabel("$E_{g,0}$ (GHz)")
 
@@ -200,15 +203,16 @@ hamil.setParameterValues(
     'phiZ',0.5
 )
 
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x,sweep,v = hamil.getSweep(sweep, 'phiZ', {})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep[i] - sweep[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -271,15 +275,16 @@ hamil.setParameterValues(
     'phiZ',0.5
 )
 
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x,sweep,v = hamil.getSweep(sweep,'phiZ',{})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep[i] - sweep[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -358,15 +363,16 @@ hamil.setParameterValues(
     'alpha',0.44
 )
 
-hamil.newSweep()
-hamil.addSweep('alpha', 0.3, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('alpha', np.linspace(0.3, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x,sweep,v = hamil.getSweep(sweep, 'alpha', {})
+E = sweep.getNumericalOutput('alpha')
+x = sweep.getInputPoints('alpha')
 for i in range(5):
-    y = sweep[i] - sweep[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\alpha$")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -413,15 +419,16 @@ hamil.setParameterValues(
     'alpha', 0.44
 )
 
-hamil.newSweep()
-hamil.addSweep('Jc', 1, 4, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('Jc', np.linspace(1, 4, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x,sweep,v = hamil.getSweep(sweep, 'Jc', {})
+E = sweep.getNumericalOutput('Jc')
+x = sweep.getInputPoints('Jc')
 for i in range(5):
-    y = sweep[i] - sweep[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$J_c$ ($\\mathrm{\mu A.\mu m^{-2}}$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -492,22 +499,19 @@ H.eigenenergies()[0]
 
 # So with this, we know we should set the shift value of the sparse solver $\sigma$ on the order of $-300$ to ensure the lowest eigenvalues are found. Let's compare the time to solution for both the dense and sparse solvers for this large Hilbert space:
 
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.45, 0.55, 21)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.45, 0.55, 11))
+sweep = hamil.runSweep(sweep_config)
 
-x,sweep1,v = hamil.getSweep(sweep,'phiZ',{})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep1[i] - sweep1[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Indeed the solving takes quite a long time, let's see if sparse matrices improve this speed. To configure the sparse solver we use the `setDiagConfig` function:
-
-# +
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.45, 0.55, 101)
 
 # Configure diagonalizer
 opts = {
@@ -517,14 +521,15 @@ opts = {
     "tol":0
 }
 hamil.setDiagConfig(sparse=True, sparsesolveropts=opts)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.45, 0.55, 101))
+sweep = hamil.runSweep(sweep_config)
 
-sweep = hamil.paramSweep(timesweep=True)
-# -
-
-x,sweep1,v = hamil.getSweep(sweep,'phiZ',{})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep1[i] - sweep1[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -537,10 +542,6 @@ hamil.configureOperator(2, 10, "charge")
 hamil.configureOperator(3, 10, "charge")
 hamil.getHilbertSpaceSize()
 
-# +
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.0, 1.0, 101)
-
 # Configure diagonalizer
 opts = {
     "sigma":-300,
@@ -549,14 +550,15 @@ opts = {
     "tol":0
 }
 hamil.setDiagConfig(sparse=True, sparsesolveropts=opts)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 
-sweep = hamil.paramSweep(timesweep=True)
-# -
-
-x,sweep1,v = hamil.getSweep(sweep,'phiZ',{})
+E = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(5):
-    y = sweep1[i] - sweep1[0]
-    plt.plot(x,y)
+    y = E.T[i] - E.T[0]
+    plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -607,36 +609,38 @@ hamil.setParameterValues(
     'phiX', 0.0
 )
 
-hamil.newSweep()
-hamil.addSweep('phiX', -1.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiX', np.linspace(-1.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x,sweep1,v = hamil.getSweep(sweep,'phiX',{})
-y = sweep1[1] - sweep1[0]
-plt.plot(x,y)
+E = sweep.getNumericalOutput('phiX')
+x = sweep.getInputPoints('phiX')
+y = E.T[1] - E.T[0]
+plt.plot(x, y)
 plt.xlabel("$\\Phi_{X}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now let's look at the energy gap landscape:
 
-hamil.newSweep()
-hamil.addSweep('phiX', -1.0, 1.0, 101)
-hamil.addSweep('phiZ', 0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiX', np.linspace(-1.0, 1.0, 101))
+sweep_config.add('phiZ', np.linspace(0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 
 # Here we get the full two dimensional sweep:
 
-xy, sweep2d, s = hamil.getSweep(sweep, ['phiX','phiZ'], {})
+sweep2d = sweep.getNumericalOutput(['phiX', 'phiZ'])
+axes = sweep.getInputMesh(['phiX', 'phiZ'])
 
 # Take the difference between the first excited state and ground state at all flux values:
 
-gap = sweep2d[1,:,:] - sweep2d[0,:,:]
+gap = sweep2d[:,:,1] - sweep2d[:,:,0]
 
 # +
 fig, ax1 = plt.subplots(ncols=1,nrows=1,constrained_layout=True,figsize=(7,6))
 ax1.set_title("Energy Gap $E_g$")
-mesh = ax1.pcolormesh(xy[0], xy[1], gap, cmap='rainbow')
+mesh = ax1.pcolormesh(axes['phiX'], axes['phiZ'], gap, cmap='rainbow')
 ax1.set_xlabel('$\\phi_X$ ($\\Phi_0$)')
 ax1.set_ylabel('$\\phi_{Z}$ ($\\Phi_0$)')
 
@@ -703,18 +707,19 @@ hamil.setParameterValues(
     'phiX', 0.0
 )
 
-hamil.newSweep()
-hamil.addSweep('a', 0.4, 1.0, 7),
-hamil.addSweep('phiX', -1.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('a', np.linspace(0.4, 1.0, 7))
+sweep_config.add('phiX', np.linspace(-1.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 # -
 
-x, sweep1, v1 = hamil.getSweep(sweep, 'phiX', {'a': 0.7})
-x, sweep2, v2 = hamil.getSweep(sweep, 'phiX', {'a': 1.0})
-y1 = sweep1[1] - sweep1[0]
-y2 = sweep2[1] - sweep2[0]
-plt.plot(x,y1,label="$\\alpha$ = $%.1f$" % (v1['a']))
-plt.plot(x,y2,label="$\\alpha$ = $%.1f$" % (v2['a']))
+E1 = sweep.getNumericalOutput('phiX', {'a': 0.7})
+E2 = sweep.getNumericalOutput('phiX', {'a': 1.0})
+x = sweep.getInputPoints('phiX')
+y1 = E1.T[1] - E1.T[0]
+y2 = E2.T[1] - E2.T[0]
+plt.plot(x, y1, label="$\\alpha$ = $%.1f$" % 0.7)
+plt.plot(x, y2, label="$\\alpha$ = $%.1f$" % 1.0)
 plt.xlabel("$\\Phi_{x}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.legend()
@@ -796,12 +801,13 @@ hamil.setParameterValues(
     'phiX', 0.0
 )
 
-hamil.newSweep()
-hamil.addSweep('phiX', -1.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phiX', np.linspace(-1.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 
-x,sweep1,v = hamil.getSweep(sweep, 'phiX', {})
-y = sweep1[1] - sweep1[0]
+E = sweep.getNumericalOutput('phiX')
+x = sweep.getInputPoints('phiX')
+y = E.T[1] - E.T[0]
 plt.plot(x, y)
 plt.plot(x, y2, "x")
 plt.xlabel("$\\Phi_{x}$ ($\\Phi_0$)")
@@ -846,41 +852,43 @@ hamil.setParameterValues(
     "d", 0.0
 )
 
-hamil.newSweep()
-hamil.addSweep('d', 0.0, 0.1, 3)
-hamil.addSweep('phiX', -1.0, 1.0, 101)
-sweep = hamil.paramSweep(timesweep=True)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('d', np.linspace(0.0, 0.1, 3))
+sweep_config.add('phiX', np.linspace(-1.0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
 
-x,sweep1,v1 = hamil.getSweep(sweep, 'phiX', {'d': 0.0})
-x,sweep2,v2 = hamil.getSweep(sweep, 'phiX', {'d': 0.04})
-x,sweep3,v3 = hamil.getSweep(sweep, 'phiX', {'d': 0.1})
-y1 = sweep1[1] - sweep1[0]
-y2 = sweep2[1] - sweep2[0]
-y3 = sweep3[1] - sweep3[0]
-plt.plot(x,y1,label="$d$ = $%.2f$" % (v1['d']))
-plt.plot(x,y2,label="$d$ = $%.2f$" % (v2['d']))
-plt.plot(x,y3,label="$d$ = $%.2f$" % (v3['d']))
+E1 = sweep.getNumericalOutput('phiX', {'d': 0.0})
+E2 = sweep.getNumericalOutput('phiX', {'d': 0.05})
+E3 = sweep.getNumericalOutput('phiX', {'d': 0.1})
+x = sweep.getInputPoints('phiX')
+y1 = E1.T[1] - E1.T[0]
+y2 = E2.T[1] - E2.T[0]
+y3 = E3.T[1] - E3.T[0]
+plt.plot(x, y1, label="$d$ = $%.2f$" % 0.0)
+plt.plot(x, y2, label="$d$ = $%.2f$" % 0.05)
+plt.plot(x, y3, label="$d$ = $%.2f$" % 0.1)
 plt.xlabel("$\\Phi_{x}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.legend()
 
 # We can also observe that the asymmetry causes a shift in the location of the minimum gap, away from half flux:
 
-hamil.setParameterValue('phiX',0.4)
-hamil.newSweep()
-hamil.addSweep('d', 0.0, 0.1, 3)
-hamil.addSweep('phiZ', 0.4, 0.6, 21)
-sweep = hamil.paramSweep(timesweep=True)
+hamil.setParameterValue('phiX', 0.4)
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('d', np.linspace(0.0, 0.1, 3))
+sweep_config.add('phiZ', np.linspace(0.4, 0.6, 21))
+sweep = hamil.runSweep(sweep_config)
 
-x,sweep1,v1 = hamil.getSweep(sweep, 'phiZ', {'d': 0.0})
-x,sweep2,v2 = hamil.getSweep(sweep, 'phiZ', {'d': 0.04})
-x,sweep3,v3 = hamil.getSweep(sweep, 'phiZ', {'d': 0.1})
-y1 = sweep1[1] - sweep1[0]
-y2 = sweep2[1] - sweep2[0]
-y3 = sweep3[1] - sweep3[0]
-plt.plot(x,y1,label="$d$ = $%.2f$" % (v1['d']))
-plt.plot(x,y2,label="$d$ = $%.2f$" % (v2['d']))
-plt.plot(x,y3,label="$d$ = $%.2f$" % (v3['d']))
+E1 = sweep.getNumericalOutput('phiZ', {'d': 0.0})
+E2 = sweep.getNumericalOutput('phiZ', {'d': 0.05})
+E3 = sweep.getNumericalOutput('phiZ', {'d': 0.1})
+x = sweep.getInputPoints('phiZ')
+y1 = E1.T[1] - E1.T[0]
+y2 = E2.T[1] - E2.T[0]
+y3 = E3.T[1] - E3.T[0]
+plt.plot(x, y1, label="$d$ = $%.2f$" % 0.0)
+plt.plot(x, y2, label="$d$ = $%.2f$" % 0.05)
+plt.plot(x, y3, label="$d$ = $%.2f$" % 0.1)
 plt.xlabel("$\\Phi_{z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 plt.legend()

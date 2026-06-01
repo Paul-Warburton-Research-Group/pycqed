@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -70,15 +70,14 @@ hamil.setDiagConfig(get_vectors=True, eigvalues=20)
 
 # Since the resonator response depends on the Hamiltonian, we configure the sweeper to use the results obtained from it. We must specify which node the resonator is connected to.
 
-# +
-# Configure the parameter sweep
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.49, 0.51, 401)
-
-# Configure the items to be evaluated
-hamil.addEvaluation('Hamiltonian')
-hamil.addEvaluation('Resonator', cpl_node=1)
-# -
+# Configure the evaluation graph (preserve Spectrum outputs so both
+# energies and rwa_energies are retrievable from the same sweep)
+evaluations = EvaluationGraph()
+evaluations.addNode("Hamiltonian", fn=hamil.getHamiltonian, outputs=["qobj"])
+evaluations.addNode("Spectrum", fn=hamil.diagonalize, outputs=["energies", "vectors"])
+evaluations.addNode("Resonator", fn=hamil.getResonatorResponse, outputs=["rwa_energies"])
+evaluations.addDependency("Hamiltonian", "Spectrum")
+evaluations.addDependency("Spectrum", "Resonator", preserve_source_outputs=True)
 
 # Now we set the parameter values of the qubit and the resonator. We will choose a small coupling capacitor of 5 fF. We also set the design frequency and impedance of the resonator. The loaded resonator frequency and impedance, the capacitance and inductance required for the design resonator, and the coupling terms are automatically calculated.
 
@@ -102,16 +101,19 @@ hamil.setParameterValues(
 
 # Now we do the sweep:
 
-sweep = hamil.paramSweep(timesweep=True)
+# Configure the parameter sweep
+sweep_config = hamil.newSweepConfig()
+sweep_config.setEvaluationGraph(evaluations)
+sweep_config.add('phiZ', np.linspace(0.49, 0.51, 401))
+sweep = hamil.runSweep(sweep_config)
 
 # The `getResonatorResponse` function returns the full set of dressed qubit eigenvalues for each number of resonator photons specified. The default is 100, and this can be set as keyword arguments passed to the `evalSpec` entry of for `getResonatorResponse`. Let's first look at the spectrum of the bare capacitively loaded RF-SQUID:
 
-x,EV,v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Hamiltonian')
-E = EV[:, 0]
-V = EV[:, 1]
+E = sweep.getNumericalOutput('phiZ', eval_output=("Spectrum", "energies"))
+x = sweep.getInputPoints('phiZ')
 
 for i in range(3):
-    y = E[i] - E[0]
+    y = E.T[i] - E.T[0]
     plt.plot(x,y,ls="-")
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -145,8 +147,8 @@ hamil.getParameterValue('L1r')
 #
 # Now let's look at the dressed (Lamb shifted) spectrum of the capacitively loaded RF-SQUID, which can be extracted using the `getCircuitLambShift` utility function:
 
-x, Erwa, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Resonator')
-Edressed = util.getCircuitLambShift(Erwa)
+Erwa = sweep.getNumericalOutput('phiZ', eval_output=("Resonator", "rwa_energies"))
+Edressed = util.getCircuitLambShift(Erwa.T)
 
 for i in range(3):
     y = Edressed[i]
@@ -173,7 +175,7 @@ plt.legend()
 # We can observe the Lamb shift directly by taking the difference of the dressed levels with those of the (loaded) isolated qubit:
 
 for i in range(3):
-    y = (Edressed[i] - (E[i] - E[0]))*1e3
+    y = (Edressed[i] - (E.T[i] - E.T[0]))*1e3
     plt.plot(x,y,ls="-")
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$\Delta E_{g,i}$ (MHz)")
@@ -182,7 +184,7 @@ plt.ylabel("$\Delta E_{g,i}$ (MHz)")
 #
 # Now let's look at the resonator modulation when the qubit is in the ground as the external flux is changed. We can use the `getResonatorShift` utility function to extract this:
 
-Eres = util.getResonatorShift(Erwa)
+Eres = util.getResonatorShift(Erwa.T)
 
 plt.plot(x, Eres[0,0])
 plt.plot([x[0], x[-1]], [fr, fr], "k--")
@@ -215,7 +217,7 @@ plt.legend()
 #
 # Now we can look at the AC Stark shift of the qubit energy levels as the average number of photons in the resonator is increased. We can use the utility function `getACStarkShift` to extract these:
 
-n, Eacstark = util.getACStarkShift(Erwa)
+n, Eacstark = util.getACStarkShift(Erwa.T)
 
 # Now we can plot the AC Stark shifted energy gaps as a function of the photon number at half flux:
 
@@ -288,16 +290,17 @@ hamilf.setParameterValues(
 )
 # -
 
-hamilf.newSweep()
-hamilf.addSweep('phiZ', 0.4984, 0.4988, 101)
 hamilf.setDiagConfig(eigvalues=20)
-sweep = hamilf.paramSweep(timesweep=True)
+sweep_config = hamilf.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.4984, 0.4988, 101))
+sweep = hamilf.runSweep(sweep_config)
 
 # We will compare the full spectrum to the reconstructed dressed states of the loaded system:
 
-x, Efull, v = hamilf.getSweep(sweep, 'phiZ', {})
+Efull = sweep.getNumericalOutput('phiZ')
+x = sweep.getInputPoints('phiZ')
 for i in range(10):
-    plt.plot(x, Efull[i]-Efull[0])
+    plt.plot(x, Efull.T[i] - Efull.T[0])
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
@@ -305,20 +308,16 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 #
 # Here however we can recognize the avoided crossing between the single photon resonator level and the first qubit excited state. Putting them side-by-side:
 
-# +
 # Configure the items to be evaluated on the previous system
-hamil.newSweep()
-hamil.addSweep('phiZ', 0.4984, 0.4988, 101)
-hamil.addEvaluation('Hamiltonian')
-hamil.addEvaluation('Resonator', cpl_node=1)
+sweep_config = hamil.newSweepConfig()
+sweep_config.setEvaluationGraph(evaluations)
+sweep_config.add('phiZ', np.linspace(0.4984, 0.4988, 101))
+sweep = hamil.runSweep(sweep_config)
+Erwa = sweep.getNumericalOutput('phiZ', eval_output=("Resonator", "rwa_energies"))
+Edressed = util.getCircuitLambShift(Erwa.T)
 
-sweep = hamil.paramSweep(timesweep=True)
-x, Erwa, v = hamil.getSweep(sweep, 'phiZ', {}, evaluable='Resonator')
-Edressed = util.getCircuitLambShift(Erwa)
-# -
-
-plt.plot(x,Efull[1]-Efull[0],"k-")
-plt.plot(x,Efull[2]-Efull[0],"k-",label="Qubit-Resonator")
+plt.plot(x,Efull.T[1]-Efull.T[0],"k-")
+plt.plot(x,Efull.T[2]-Efull.T[0],"k-",label="Qubit-Resonator")
 plt.plot(x,Edressed[1],"rx",label="First Gap, RWA")
 plt.plot([x[0], x[-1]], [fr, fr],"k--",label="Bare Resonator")
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")

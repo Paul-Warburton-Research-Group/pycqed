@@ -3,10 +3,17 @@ import graphviz as gv
 import pydot as pd
 import platform
 
+from typing import TypeAlias
+
+
+CircuitGraphEdge: TypeAlias = tuple[int, int, int]
+
+
 # FIXME: Make this more intelligent
 if platform.system() == 'Windows':
     import os
     os.environ["PATH"] += os.pathsep + 'C:/Program Files/Graphviz/bin/'
+
 
 class CircuitGraph:
 
@@ -34,7 +41,7 @@ class CircuitGraph:
         "Loop"
     ]
 
-    def __init__(self, circuit_name=""):
+    def __init__(self, circuit_name: str = ""):
         """ Abstract description of a superconducting circuit.
         """
 
@@ -62,7 +69,7 @@ class CircuitGraph:
         # General undirected circuit graph
         self.circuit_graph = nx.MultiGraph(circuit_name=circuit_name)
 
-    def addBranch(self, n1, n2, component):
+    def addBranch(self, n1: int, n2: int, component: str):
         """ Adds a branch between two circuit nodes that contains a single component.
         """
 
@@ -82,7 +89,7 @@ class CircuitGraph:
         self._update_graphs()
         self._update_couplings_map((n1, n2, k))
 
-    def coupleBranchesInductively(self, inductor1, inductor2, mutual_inductance):
+    def coupleBranchesInductively(self, inductor1: str, inductor2: str, mutual_inductance: str):
         """ Couples two branches inductively.
         """
         if mutual_inductance[0] != self._element_prefixes[4]:
@@ -112,7 +119,7 @@ class CircuitGraph:
         # Update mapping
         self.coupled_branches[mutual_inductance] = (edge1, edge2)
 
-    def coupleResonatorCapacitively(self, node, component):
+    def coupleResonatorCapacitively(self, node: int, component: str):
         """ Couples a linear resonator capacitively.
         """
         if node not in self.circuit_graph.nodes:
@@ -169,7 +176,7 @@ class CircuitGraph:
         """
         pass
 
-    def addFluxBias(self, edge_component, suffix, mutual_inductance=None):
+    def addFluxBias(self, edge_component: str, suffix: str, mutual_inductance: str | None = None):
         """ Adds a flux bias term to the specified branch.
         """
         edge = self.getComponentEdge(edge_component)
@@ -211,7 +218,7 @@ class CircuitGraph:
             "suffix": suffix
         }
 
-    def addChargeBias(self, node, suffix, coupling_capacitance=None):
+    def addChargeBias(self, node: int, suffix: str, coupling_capacitance: str | None = None):
         """ Adds a charge bias term to the specified node.
         """
         if node not in self.circuit_graph.nodes:
@@ -239,7 +246,7 @@ class CircuitGraph:
             "suffix": suffix
         }
 
-    def isEdgeInSuperconductingLoop(self, edge):
+    def isEdgeInSuperconductingLoop(self, edge: CircuitGraphEdge) -> bool:
         """ Checks a branch is part of a superconducting loop.
         """
         if edge not in self.components_map:
@@ -250,7 +257,7 @@ class CircuitGraph:
                 return True
         return False
 
-    def isCapacitiveEdge(self, edge):
+    def isCapacitiveEdge(self, edge: CircuitGraphEdge) -> bool:
         """ Checks a branch contains a capacitor.
         """
         cstr = self.components_map[edge]
@@ -258,7 +265,7 @@ class CircuitGraph:
             return True
         return False
 
-    def isInductiveEdge(self, edge):
+    def isInductiveEdge(self, edge: CircuitGraphEdge) -> bool:
         """ Checks a branch contains an inductor.
         """
         cstr = self.components_map[edge]
@@ -266,7 +273,7 @@ class CircuitGraph:
             return True
         return False
 
-    def isJosephsonEdge(self, edge):
+    def isJosephsonEdge(self, edge: CircuitGraphEdge) -> bool:
         """ Checks a branch contains a JJ.
         """
         cstr = self.components_map[edge]
@@ -274,7 +281,7 @@ class CircuitGraph:
             return True
         return False
 
-    def isPhaseSlipEdge(self, edge):
+    def isPhaseSlipEdge(self, edge: CircuitGraphEdge) -> bool:
         """ Checks a branch contains a phase-slip nano wire.
         """
         cstr = self.components_map[edge]
@@ -282,7 +289,7 @@ class CircuitGraph:
             return True
         return False
 
-    def getCapacitiveEdges(self):
+    def getCapacitiveEdges(self) -> dict[str, CircuitGraphEdge]:
         """ Gets a mapping of all edges that contain a capacitor.
         """
         edges_map = {v: k for k, v in self.components_map.items()}
@@ -292,7 +299,7 @@ class CircuitGraph:
                 ret[c] = edge
         return ret
 
-    def getInductiveEdges(self):
+    def getInductiveEdges(self) -> dict[str, CircuitGraphEdge]:
         """ Gets a mapping of all edges that contain an inductor.
         """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
@@ -302,7 +309,7 @@ class CircuitGraph:
                 ret[c] = edge
         return ret
 
-    def getJosephsonEdges(self):
+    def getJosephsonEdges(self) -> dict[str, CircuitGraphEdge]:
         """ Gets a mapping of all edges that contain a JJ.
         """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
@@ -312,7 +319,7 @@ class CircuitGraph:
                 ret[c] = edge
         return ret
 
-    def getPhaseSlipEdges(self):
+    def getPhaseSlipEdges(self) -> dict[str, CircuitGraphEdge]:
         """ Gets a mapping of all edges that contain a phase-slip nanowire.
         """
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
@@ -322,7 +329,7 @@ class CircuitGraph:
                 ret[c] = edge
         return ret
 
-    def getComponentEdge(self, component):
+    def getComponentEdge(self, component: str) -> CircuitGraphEdge:
         """ Gets the edge associated with the specified component.
         """
         if component not in self.components_map.values():
@@ -337,7 +344,7 @@ class CircuitGraph:
         edges_map = {self.components_map[k]: k for k in self.sc_spanning_tree_wc.edges}
         return edges_map[component]
 
-    def getEdgesSharedWithLoop(self, loop_key):
+    def getEdgesSharedWithLoop(self, loop_key: int) -> set[CircuitGraphEdge]:
         if loop_key not in self.sc_loops.keys():
             raise ValueError("No loop key %i available." % loop_key)
 
@@ -356,7 +363,7 @@ class CircuitGraph:
     # DRAWING
     #
 
-    def drawGraphViz(self, graph='Circuit', filename=None, format='svg'):
+    def drawGraphViz(self, graph: str = 'Circuit', filename: str | None = None, format: str = 'svg') -> gv.Source:
         if graph not in self._subgraphs:
             raise TypeError("Invalid subgraph type '%s'." % graph)
 

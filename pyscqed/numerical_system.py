@@ -7,10 +7,12 @@ import networkx as nx
 import progress.bar
 import time
 
-from . import dataspec as ds
-from . import symbolic_system as cs
-from . import parameters as pa
-from . import units as un
+from .dataspec import TempData
+from .symbolic_system import SymbolicSystem
+from .sweeping import SweepConfig, SweepResult, SweepResultFromDisk, SweepResultFromMemory
+from .evaluation_graph import EvaluationGraph
+from .result import EigenvalueResult, EigenvectorResult, FunctionResult
+from .units import Units
 from . import physical_constants as pc
 from . import util
 from . import units
@@ -19,7 +21,25 @@ from . import units
 _qobj_atol = 1e-12
 
 
-class NumericalSystem(ds.TempData):
+class HamiltonianSpectrum(EvaluationGraph):
+    def __init__(self, nsys: "NumericalSystem"):
+        super().__init__()
+        self.addNode("Hamiltonian", fn=nsys.getHamiltonian, outputs=["qobj"])
+        self.addNode("Spectrum", fn=nsys.diagonalize, outputs=["E"])
+        self.addDependency("Hamiltonian", "Spectrum")
+
+
+class SingleResonatorInteraction(EvaluationGraph):
+    def __init__(self, nsys: "NumericalSystem"):
+        super().__init__()
+        self.addNode("Hamiltonian", fn=nsys.getHamiltonian, outputs=["qobj"])
+        self.addNode("Spectrum", fn=nsys.diagonalize, outputs=["energies", "vectors"])
+        self.addNode("Resonator", fn=nsys.getResonatorResponse, outputs=["rwa_energies"])
+        self.addDependency("Hamiltonian", "Spectrum")
+        self.addDependency("Spectrum", "Resonator")
+
+
+class NumericalSystem(TempData):
     
     ## Mode types
     __mode_types = [
@@ -30,7 +50,7 @@ class NumericalSystem(ds.TempData):
     ]
     
     ## Initialise a Hamiltonian using a circuit specification
-    def __init__(self, symbolic_system, unit=units.Units("CQED1")):
+    def __init__(self, symbolic_system: SymbolicSystem, unit=Units("CQED1")):
         
         # Initialise the temporary data manager
         super().__init__()
@@ -51,15 +71,8 @@ class NumericalSystem(ds.TempData):
         # Load default diagonaliser configuration
         self.setDiagConfig()
         
-        # Init the sweeper data
-        self._init_sweep_data()
-        
         # Load the symbolic expressions
         self.getSymbolicExpressions()
-    
-    # Called when deleting
-    #def __del__(self):
-    #    self.clearSessionData()
     
     def getNodeList(self):
         return self.SS.nodes
@@ -354,88 +367,6 @@ class NumericalSystem(ds.TempData):
         # Get branch inverse inductance matrix for branch current calculations
         self.Linvnp_b = np.asmatrix(self.Linv_b.subs(subs), dtype=np.float64)
     
-    def _presub(self):
-        # Set the parameters that are not being swept
-        subs = self.SS.getNonSweepParametersDict()
-        
-        # Generate final symbolic expressions
-        self.Cinv_pre = self.SS.getInverseCapacitanceMatrix().subs(subs)
-        self.Linv_pre = self.SS.getInverseInductanceMatrix().subs(subs)
-
-        # Get branch inverse inductance matrix for branch current calculations
-        self.Linv_b_pre = self.SS.getInverseInductanceMatrix(mode='branch').subs(subs)
-        
-        self.Jvec_pre = self.SS.getJosephsonVector().subs(subs)
-        self.Pvec_pre = self.SS.getPhaseSlipVector().subs(subs)
-        self.Qb_pre = self.SS.getChargeBiasVector().subs(subs)
-        self.Qbt_pre = self.SS.Rnb*self.SS.getChargeBiasVector().subs(subs)
-        self.Pbm_pre = self.SS.getFluxBiasMatrix(mode="branch").subs(subs)
-        self.Pbi_pre = self.SS.getFluxBiasVectorInd().subs(subs)
-        
-        # Find which operators will need to be regenerated for each sweep
-        self._get_regen_coordinate_nodes()
-    
-    def _get_regen_coordinate_nodes(self):
-        
-        # FIXME: Could identify the precise parameter and where they occur in the sweep to only regenerate when necessary rather than every iteration. This would require _postsub to know which iteration we are at.
-        
-        # Get the parameters that are being swept
-        sweep_syms = set(self.SS.getSweepParametersDict().keys())
-        
-        # For each node:
-        self.regen_nodes = []
-        for node, data in self.operator_data.items():
-            if data["basis"] != "oscillator":
-                continue
-            
-            # Check if those parameters are oscillator impedance parameters
-            if not data["impedance"].free_symbols.isdisjoint(sweep_syms):
-                self.regen_nodes.append(node)
-    
-    def _postsub(self, params):
-    
-        # Set the parameter values
-        self.SS.setParameterValues(params)
-        
-        # Get the subs
-        subs = self.SS.getSweepParametersDict()
-        
-        # Substitute circuit parameters
-        self.Cinvnp = np.asmatrix(self.Cinv_pre.subs(subs), dtype=np.float64)
-        self.Linvnp = np.asmatrix(self.Linv_pre.subs(subs), dtype=np.float64)
-        self.Jvecnp = np.asarray(self.Jvec_pre.subs(subs), dtype=np.float64)[:, 0]
-        self.Pvecnp = np.asarray(self.Pvec_pre.subs(subs), dtype=np.float64)[:, 0]
-        self.Linvnp_b = np.asmatrix(self.Linv_b_pre.subs(subs), dtype=np.float64)
-        
-        # Substitute external biases
-        self.Qbnp = np.asmatrix(self.Qb_pre.subs(subs), dtype=np.float64) # x 2e
-        self.Qbtnp = np.asmatrix(self.Qbt_pre.subs(subs), dtype=np.float64) # x 2e
-        self.Pbsm = np.asmatrix(self.Pbm_pre.subs(subs), dtype=np.float64)
-        #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs), dtype=np.float64) # x Phi0
-        self.Pbinp = np.asmatrix(self.Pbi_pre.subs(subs), dtype=np.float64)
-        
-        # Generate exponentiated flux biases
-        Pexp1 = []
-        Pexp2 = []
-        for i in range(self.Pbsm.shape[0]):
-            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
-            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
-        self.Pexp_pnp = Pexp1
-        self.Pexp_mnp = Pexp2
-        
-        # Generate exponentiated charge biases
-        Qexp1 = []
-        Qexp2 = []
-        for i in range(self.Qbtnp.shape[0]):
-            Qexp1.append(np.exp(2j*np.pi*self.Qbtnp[i, 0]))
-            Qexp2.append(np.exp(-2j*np.pi*self.Qbtnp[i, 0]))
-        self.Qexp_pnp = Qexp1
-        self.Qexp_mnp = Qexp2
-        
-        # Regenerate operators if required
-        if self.regen_nodes != []:
-            self.getExpandedOperatorsMap(self.regen_nodes)
-    
     def getLinearPart(self):
         # Get charging energy
         Hq = self.units.getPrefactor("Ec")*0.5*\
@@ -496,17 +427,7 @@ class NumericalSystem(ds.TempData):
     #       Evaluables
     ###################################################################################################################
     
-    __eval_spec = {
-        "Hamiltonian":        {'eval': 'getHamiltonian', 'diag': True, 'depends': None, 'kwargs': {}},
-        "Resonator":          {'eval': 'getResonatorResponse', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
-        "Current":            {'eval': 'getCurrentMatrixElement', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
-        "Voltage":            {'eval': 'getVoltageMatrixElement', 'diag': False, 'depends': 'getHamiltonian', 'kwargs': {}},
-        "ChargingEnergy":     {'eval': 'getChargingEnergies', 'diag': False, 'depends': None, 'kwargs': {}},
-        "FluxEnergy":         {'eval': 'getFluxEnergies', 'diag': False, 'depends': None, 'kwargs': {}},
-        "JosephsonEnergy":    {'eval': 'getJosephsonEnergies', 'diag': False, 'depends': None, 'kwargs': {}}
-    }
-    
-    def getHamiltonian(self):
+    def getHamiltonian(self) -> qt.Qobj:
         # Get charging energy
         Hq = self.units.getPrefactor("Ec")*0.5*\
         util.mdot((self.Qnp + self.Qbnp).T, self.Cinvnp, self.Qnp + self.Qbnp)[0, 0]
@@ -593,7 +514,7 @@ class NumericalSystem(ds.TempData):
         # Total Hamiltonian
         return (Hq + Hf + Hj + Hp).tidyup(_qobj_atol)
     
-    def getCurrentOperator(self, edge=None):
+    def getCurrentOperator(self, edge=None) -> qt.Qobj:
         # Check edge
         if edge is None:
             raise Exception("No edge specified for branch current operator.")
@@ -653,7 +574,7 @@ class NumericalSystem(ds.TempData):
         else:
             raise Exception("Edge %s is not current-carrying" % repr(edge))
     
-    def getCurrentMatrixElement(self, E, V, edge=None, elements=None):
+    def getCurrentMatrixElement(self, energies: EigenvalueResult, vectors: EigenvectorResult, edge=None, elements=None) -> float:
         # Get the relevant operator
         Iop = self.getCurrentOperator(edge=edge)
         
@@ -663,7 +584,7 @@ class NumericalSystem(ds.TempData):
         result = np.zeros(len(elements), dtype=np.float64)
         for i, indices in enumerate(elements):
             i1, i2 = indices
-            result[i] = Iop.matrix_element(V[i1], V[i2]).real
+            result[i] = Iop.matrix_element(vectors.data[i1], vectors.data[i2]).real
         return result
     
     def getVoltageOperator(self, node=None):
@@ -680,7 +601,7 @@ class NumericalSystem(ds.TempData):
         # Use the inverse capacitance matrix
         return self.units.getPrefactor("Vop") * Q[i, 0] * self.Cinvnp[i, i]
     
-    def getVoltageMatrixElement(self, E, V, node=None, elements=None):
+    def getVoltageMatrixElement(self, energies: EigenvalueResult, vectors: EigenvectorResult, node=None, elements=None):
         # Get the relevant operator
         Vop = self.getVoltageOperator(node=node)
         
@@ -690,7 +611,7 @@ class NumericalSystem(ds.TempData):
         result = np.zeros(len(elements), dtype=np.float64)
         for i, indices in enumerate(elements):
             i1, i2 = indices
-            result[i] = Vop.matrix_element(V[i1], V[i2]).real
+            result[i] = Vop.matrix_element(vectors.data[i1], vectors.data[i2]).real
         return result
     
     def getChargingEnergies(self, node=None):
@@ -733,12 +654,20 @@ class NumericalSystem(ds.TempData):
             i = self.SS.edges.index(edge)
             return self.Pvecnp[i] * self.units.getPrefactor("Ep")
     
-    def getResonatorResponse(self, E, V, nmax=100, cpl_node=None):
+    def getResonatorResponse(
+        self,
+        energies: EigenvalueResult,
+        vectors: EigenvectorResult,
+        nmax=100,
+        cpl_node=None
+    ) -> np.array:
         # Save the derived parameter values for each sweep value
         if cpl_node is None:
-            #for k in self.SS.coupled_subsys[self.subsystem]['derived_parameters'].keys():
-            #    self.subsys_dparams[self.subsystem][k].append(self.dpnp[k])
-            return None
+            resonator_nodes = [node for node, value in self.SS.CG.resonators_cap.items() if value is not None]
+            if len(resonator_nodes) == 1:
+                cpl_node = resonator_nodes[0]
+            else:
+                raise RuntimeError("There are either no coupled resonators or too many to guess the node.")
         
         # Get the model parameters
         gC = self.SS.getParameterValue('g%ir' % cpl_node)
@@ -749,13 +678,13 @@ class NumericalSystem(ds.TempData):
         Op = self.Qnp[index, 0] + self.Qbnp[index, 0]
         
         # Get coupling terms
-        E = E - E[0]
+        E = energies.data - energies.data[0]
+        V = vectors.data
         tmax = len(E)
         nmax = nmax + 1 + tmax
-        norm = Op.matrix_element(V[0], V[1])#(V[0].dag()*Op*V[1])[0][0][0]
+        norm = Op.matrix_element(V[0], V[1])
         g_list = []
         for i in range(tmax-1):
-            #g_list.append((V[i].dag()*Op*V[i+1])[0][0][0])
             g_list.append(Op.matrix_element(V[i], V[i+1]))
         
         # Apply the circuit derived prefactor
@@ -787,7 +716,13 @@ class NumericalSystem(ds.TempData):
     #       Diagonaliser Configuration
     ###################################################################################################################
     
-    def setDiagConfig(self, eigvalues=5, get_vectors=False, sparse=False, sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}):
+    def setDiagConfig(
+        self,
+        eigvalues=5,
+        get_vectors=False,
+        sparse=False,
+        sparsesolveropts={"sigma":None, "mode":"normal", "maxiter":None, "tol":1e-3, "which":"SA"}
+    ):
         self.diagonalizer_config = {
             'kwargs':{
                 'eigvalues':eigvalues, 
@@ -806,8 +741,14 @@ class NumericalSystem(ds.TempData):
     def getDiagConfig(self):
         return self.diagonalizer_config
     
-    def diagonalize(self, M):
-        return self.diagonalizer_config['func'](M, **self.diagonalizer_config['kwargs'])
+    def diagonalize(self, qobj: qt.Qobj) -> tuple[EigenvalueResult, EigenvectorResult | None]:
+        result = self.diagonalizer_config['func'](qobj, **self.diagonalizer_config['kwargs'])
+        if self.diagonalizer_config["kwargs"]["get_vectors"]:
+            return (
+                EigenvalueResult(data=result[0], source="diagonalize"),
+                EigenvectorResult(data=result[1], source="diagonalize")
+            )
+        return EigenvalueResult(data=result, source="diagonalize"), None
     
     ###################################################################################################################
     #       Parameter Collection Wrapper Functions and Extended Functions
@@ -856,203 +797,127 @@ class NumericalSystem(ds.TempData):
     ###################################################################################################################
     #       Parameter Sweep Functions
     ###################################################################################################################
+    def newSweepConfig(self) -> SweepConfig:
+        config = SweepConfig(self.SS)
+        # Default evaluation graph
+        config.setEvaluationGraph(HamiltonianSpectrum(self))
+        return config
     
-    def newSweep(self):
-        self._init_sweep_data()
-    
-    ## Create a sweep specification for a single parameter.
-    def addSweep(self, *args, **kwargs):
-        self.sweep_specs.append(self.SS.paramSweepSpec(*args, **kwargs))
-    
-    ## Create an evaluation specification for a single function.
-    def addEvaluation(self, evaluable, **kwargs):
-        if evaluable not in self.__eval_spec.keys():
-            raise Exception("Evaluable '%s' not valid." % evaluable)
-        
-        # Set up the evaluable data
-        data = self.__eval_spec[evaluable].copy()
-        data['kwargs'] = kwargs
-        self.evaluations.append(data)
-        # FIXME: Can implement kwargs checking here
-        # FIXME: Can implement proper order of evaluations here
-    
-    def getSweep(self, data, ind_var, static_vars, evaluable="Hamiltonian"):
-        if evaluable not in self.__eval_spec.keys():
-            raise Exception("Evaluable '%s' not valid." % evaluable)
-        key = self.__eval_spec[evaluable]['eval']
-        return self.SS.getSweepResult(ind_var, static_vars, data=data, key=key)
-    
-    def paramSweep(self, timesweep=True):
-        # Time initialisation
-        if timesweep:
-            init_time = time.time()
-
-        # FIXME: Automatically configure diagonaliser here, based on data on the evaluables
-
-        # Check if using default evaluables
-        if len(self.evaluations) == 0:
-            self.evaluations = [self.__eval_spec["Hamiltonian"]]
-
-        # Generate sweep grid
-        self.SS.ndSweep(self.sweep_specs)
-
+    def runSweep(self, sweep_config: SweepConfig, use_disk: bool = True) -> SweepResult:
         # FIXME: Determine if we should be saving the data to temp files rather than in RAM:
         # Use the diagonaliser configuration, the requested evaluation functions, and the total number of sweep setpoints that will be used.
-        self.__use_temp = True
+        self._perform_pre_sweep_substitutions(sweep_config)
 
-        # Do pre-substitutions to avoid repeating un-necessary substitutions in loops
-        self._presub()
+        evaluation_graph = sweep_config.getEvaluationGraph()
+        if evaluation_graph is None:
+            raise RuntimeError("An evaluation graph must be set.")
 
-        # FIXME: Check that all symbolic variables have an associated value at this point
+        results = []
+        point_gen = sweep_config.getGenerator()
+        with progress.bar.Bar('Solving', check_tty=False, max=sweep_config.getTotalCount()) as bar:
+            for sweep_point in point_gen:
+                # Set the parameter values, this updates the state for the next call to work
+                self.SS.setParameterValues(sweep_point)
+                self._perform_sweep_point_substitutions(sweep_config)
 
-        # Do the requested evaluations
-        if len(self.evaluations) > 1:
-            data = self._evaluate_multiple(timesweep)
+                # Compute evaluation graph
+                default_inputs = evaluation_graph.getDefaultInputs()
+                result = evaluation_graph.evaluate(default_inputs)
+
+                if use_disk:
+                    # Write to temp file
+                    f = self.writePart(result)
+                    results.append(f)
+                else:
+                    results.append(result)
+                bar.next()
+            bar.finish()
+
+        if use_disk:
+            return SweepResultFromDisk(sweep_config, results)
         else:
-            data = self._evaluate_single(timesweep)
+            return SweepResultFromMemory(sweep_config, results)
+    
+    def _perform_pre_sweep_substitutions(self, sweep_config: SweepConfig):
+        # Get the static parameters
+        substitutions = sweep_config.getStaticSymbols()
 
-        # Reset the evaluables
-        self._init_sweep_data()
+        # Generate final symbolic expressions
+        self.Cinv_pre = self.SS.getInverseCapacitanceMatrix().subs(substitutions)
+        self.Linv_pre = self.SS.getInverseInductanceMatrix().subs(substitutions)
 
-        # Report timings
-        if timesweep:
-            end_time = time.time()
-            loop_time = data["loop_time"]
-            print ("Parameter Sweep Duration:")
-            print ("  Initialization:\t%.3f s" % (loop_time-init_time))
-            print ("  Loop duration:\t%.3f s" % (end_time-loop_time))
-            print ("  Avg iteration:\t%.3f s" % ((end_time-loop_time)/self.SS.sweep_grid_npts))
-        if self.__use_temp:
-            return data["results_disk"]
-        else:
-            return data["results_ram"]
-
+        # Get branch inverse inductance matrix for branch current calculations
+        self.Linv_b_pre = self.SS.getInverseInductanceMatrix(mode='branch').subs(substitutions)
+        
+        self.Jvec_pre = self.SS.getJosephsonVector().subs(substitutions)
+        self.Pvec_pre = self.SS.getPhaseSlipVector().subs(substitutions)
+        self.Qb_pre = self.SS.getChargeBiasVector().subs(substitutions)
+        self.Qbt_pre = self.SS.Rnb*self.SS.getChargeBiasVector().subs(substitutions)
+        self.Pbm_pre = self.SS.getFluxBiasMatrix(mode="branch").subs(substitutions)
+        self.Pbi_pre = self.SS.getFluxBiasVectorInd().subs(substitutions)
+        
+        # Find which operators will need to be regenerated for each sweep
+        self._get_dynamic_node_dofs(sweep_config)
+    
+    def _get_dynamic_node_dofs(self, sweep_config: SweepConfig):
+        # FIXME: Could identify the precise parameter and where they occur in the sweep to only regenerate when necessary rather than every iteration. This would require _postsub to know which iteration we are at.
+        
+        # Get the parameters that are being swept
+        sweep_syms = set(sweep_config.getSweptSymbols())
+        
+        # For each node:
+        self.regen_nodes = []
+        for node, data in self.operator_data.items():
+            if data["basis"] != "oscillator":
+                continue
+            
+            # Check if those parameters are oscillator impedance parameters
+            if not data["impedance"].free_symbols.isdisjoint(sweep_syms):
+                self.regen_nodes.append(node)
+    
+    def _perform_sweep_point_substitutions(self, sweep_config: SweepConfig):
+        # Get the subs
+        substitutions = sweep_config.getSweptSymbols()
+        
+        # Substitute circuit parameters
+        self.Cinvnp = np.asmatrix(self.Cinv_pre.subs(substitutions), dtype=np.float64)
+        self.Linvnp = np.asmatrix(self.Linv_pre.subs(substitutions), dtype=np.float64)
+        self.Jvecnp = np.asarray(self.Jvec_pre.subs(substitutions), dtype=np.float64)[:, 0]
+        self.Pvecnp = np.asarray(self.Pvec_pre.subs(substitutions), dtype=np.float64)[:, 0]
+        self.Linvnp_b = np.asmatrix(self.Linv_b_pre.subs(substitutions), dtype=np.float64)
+        
+        # Substitute external biases
+        self.Qbnp = np.asmatrix(self.Qb_pre.subs(substitutions), dtype=np.float64) # x 2e
+        self.Qbtnp = np.asmatrix(self.Qbt_pre.subs(substitutions), dtype=np.float64) # x 2e
+        self.Pbsm = np.asmatrix(self.Pbm_pre.subs(substitutions), dtype=np.float64)
+        #self.Pbnp = np.asmatrix(self.Pb_pre.subs(subs), dtype=np.float64) # x Phi0
+        self.Pbinp = np.asmatrix(self.Pbi_pre.subs(substitutions), dtype=np.float64)
+        
+        # Generate exponentiated flux biases
+        Pexp1 = []
+        Pexp2 = []
+        for i in range(self.Pbsm.shape[0]):
+            Pexp1.append(np.exp(2j*np.pi*self.Pbsm[i, i]))
+            Pexp2.append(np.exp(-2j*np.pi*self.Pbsm[i, i]))
+        self.Pexp_pnp = Pexp1
+        self.Pexp_mnp = Pexp2
+        
+        # Generate exponentiated charge biases
+        Qexp1 = []
+        Qexp2 = []
+        for i in range(self.Qbtnp.shape[0]):
+            Qexp1.append(np.exp(2j*np.pi*self.Qbtnp[i, 0]))
+            Qexp2.append(np.exp(-2j*np.pi*self.Qbtnp[i, 0]))
+        self.Qexp_pnp = Qexp1
+        self.Qexp_mnp = Qexp2
+        
+        # Regenerate operators if required
+        if self.regen_nodes != []:
+            self.getExpandedOperatorsMap(self.regen_nodes)
 
     ###################################################################################################################
     #       Internal Functions
     ###################################################################################################################
-    def _evaluate_single(self, timesweep):
-        results = []
-        entry = self.evaluations[0]
-        tmp_results = []
-        loop_time = 0.0
-
-        # Time loop
-        if timesweep:
-            loop_time = time.time()
-        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
-            for i in range(self.SS.sweep_grid_npts):
-                # Do the post-substitutions
-                self._postsub(dict([(k, v[i]) for k, v in self.SS.sweep_grid_c.items()]))
-
-                # Get requested evaluable
-                M = getattr(self, entry['eval'])(**entry['kwargs'])
-                if self.__use_temp:
-                    if entry['diag']:
-                        results = self.diagonalize(M)
-                    else:
-                        results = M
-                else:
-                    if entry['diag']:
-                        results.append(self.diagonalize(M))
-                    else:
-                        results.append(M)
-
-                if self.__use_temp:
-                    # Write to temp file
-                    f = self.writePart(results)
-                    tmp_results.append(f)
-                bar.next()
-            bar.finish()
-
-        # Convert results to ndarray
-        if not self.__use_temp:
-            results = np.array(results)
-        return {
-            "results_ram": results,
-            "results_disk": tmp_results,
-            "loop_time": loop_time
-        }
-
-    def _evaluate_multiple(self, timesweep):
-        # Prepare the results structure
-        results = {}
-        for entry in self.evaluations:
-            results[entry['eval']] = []
-        tmp_results = []
-        loop_time = 0.0
-
-        # Time loop
-        if timesweep:
-            loop_time = time.time()
-        with progress.bar.Bar('Solving', check_tty=False, max=self.SS.sweep_grid_npts) as bar:
-            for i in range(self.SS.sweep_grid_npts):
-                # Do the post-substitutions
-                self._postsub({k: v[i] for k, v in self.SS.sweep_grid_c.items()})
-
-                # Get requested evaluables
-                E = None
-                V = None
-                for entry in self.evaluations:
-
-                    # Check if this evaluable depends on another
-                    if entry['depends'] is not None:
-                        try:
-                            if self.__use_temp:
-                                dep = results[entry['depends']]
-                            else:
-                                dep = results[entry['depends']][i]
-                        except:
-                            raise Exception("eval spec with 'depends':'%s' entry should be specified after the one it depends on ('%s'), or Possibly invalid 'depends' value." % (entry['depends'], entry['eval'])) # FIXME
-
-                        # In almost every case the depends will be on the eigenvalues and eigenvectors of the independent eval spec
-                        try:
-                            E, V = dep
-                        except:
-                            raise Exception("need eigenvectors for 'depends'")
-
-                    # Check if evaluation depends on eigenvalues and eigenvectors and run it
-                    if V is not None:
-                        M = getattr(self, entry['eval'])(E, V, **entry['kwargs'])
-                    else:
-                        M = getattr(self, entry['eval'])(**entry['kwargs'])
-
-                    # Check if diagonalisation is required
-                    if self.__use_temp:
-                        if entry['diag']:
-                            results[entry['eval']] = self.diagonalize(M)
-                        else:
-                            results[entry['eval']] = M
-                    else:
-                        if entry['diag']:
-                            results[entry['eval']].append(self.diagonalize(M))
-                        else:
-                            results[entry['eval']].append(M)
-                    E = None
-                    V = None
-
-                if self.__use_temp:
-                    # Write to temp file
-                    f = self.writePart(results)
-                    tmp_results.append(f)
-                bar.next()
-            bar.finish()
-
-        # Convert the result entries to ndarray
-        if not self.__use_temp:
-            for entry in self.evaluations:
-                results[entry['eval']] = np.array(results[entry['eval']])
-        return {
-            "results_ram": results,
-            "results_disk": tmp_results,
-            "loop_time": loop_time
-        }
-
-    # Initialises the sweep data
-    def _init_sweep_data(self):
-        self.sweep_specs = []
-        self.evaluations = []
-    
     # Replaces np asmatrix
     def _init_qobj_vector(self, obj_list, dtype=None):
         obj = np.empty((len(obj_list), 1) , dtype=dtype)

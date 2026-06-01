@@ -1,11 +1,12 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -80,31 +81,35 @@ hamil.setParameterValues(
     'phi-', 0.0
 )
 
-# Configure the parameter sweep
-hamil.newSweep()
-hamil.addSweep('phi-', 0, 1.0, 101)
+# +
 hamil.setParameterValue('phi+', 0.0)
-sweep = hamil.paramSweep(timesweep=True)
 
-x,E,v = hamil.getSweep(sweep, 'phi-', {})
-gaps = []
+# Configure the parameter sweep
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phi-', np.linspace(0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
+# -
+
+E = sweep.getNumericalOutput('phi-')
+trace = sweep.getInputPoints('phi-')
 for i in range(5):
-    gaps.append(E[i]-E[0])
-    plt.plot(x, gaps[i])
+    plt.plot(trace, E.T[i] - E.T[0])
 plt.xlabel("$\\phi_+$ [$\\phi_0$]")
 plt.ylabel("Potential [GHz]")
 
-# Configure the parameter sweep
-hamil.newSweep()
-hamil.addSweep('phi+', 0, 1.0, 101)
+# +
 hamil.setParameterValue('phi-', 0.0)
-sweep = hamil.paramSweep(timesweep=True)
 
-x,E,v = hamil.getSweep(sweep, 'phi-', {})
-gaps = []
+# Configure the parameter sweep
+sweep_config = hamil.newSweepConfig()
+sweep_config.add('phi+', np.linspace(0, 1.0, 101))
+sweep = hamil.runSweep(sweep_config)
+# -
+
+E = sweep.getNumericalOutput('phi+')
+trace = sweep.getInputPoints('phi+')
 for i in range(5):
-    gaps.append(E[i]-E[0])
-    plt.plot(x, gaps[i])
+    plt.plot(trace, E.T[i] - E.T[0])
 plt.xlabel("$\\phi_+$ [$\\phi_0$]")
 plt.ylabel("Potential [GHz]")
 

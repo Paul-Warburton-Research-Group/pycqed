@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -56,13 +56,13 @@ h.setParameterValues(
     'Qg', 0.0
 )
 
-h.newSweep()
-h.addSweep('phiZ', 0.0, 1.0, 101)
-sweep = h.paramSweep(timesweep=True)
-
-x,sweep_p,v = h.getSweep(sweep,'phiZ',{})
+sweep_config = h.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('phiZ')
+sweep_p = sweep.getNumericalOutput('phiZ')
 for i in range(5):
-    y = sweep_p[i] - sweep_p[0]
+    y = sweep_p.T[i] - sweep_p.T[0]
     plt.plot(x,y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -71,13 +71,13 @@ h.setParameterValues(
     'phiZ', 0.5,
     'Qg', 0.0
 )
-h.newSweep()
-h.addSweep('Qg', 0.0, 1.0, 101)
-sweep = h.paramSweep(timesweep=True)
-
-x,sweep_q,v = h.getSweep(sweep,'Qg',{})
+sweep_config = h.newSweepConfig()
+sweep_config.add('Qg', np.linspace(0.0, 1.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('Qg')
+sweep_q = sweep.getNumericalOutput('Qg')
 for i in range(5):
-    y = sweep_q[i] - sweep_q[0]
+    y = sweep_q.T[i] - sweep_q.T[0]
     plt.plot(x,y)
 plt.xlabel("$Q_g$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -88,13 +88,13 @@ h.setParameterValues(
     'phiZ', 0.5,
     'Qg', 0.5
 )
-h.newSweep()
-h.addSweep('Cg1', 0.0, 10.0, 101)
-sweep = h.paramSweep(timesweep=True)
-
-x,sweep_c,v = h.getSweep(sweep,'Cg1',{})
+sweep_config = h.newSweepConfig()
+sweep_config.add('Cg1', np.linspace(0.0, 10.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('Cg1')
+sweep_c = sweep.getNumericalOutput('Cg1')
 for i in range(2):
-    y = sweep_c[i] - sweep_c[0]
+    y = sweep_c.T[i] - sweep_c.T[0]
     plt.plot(x,y)
 plt.xlabel("$C_{g1}$ (fF)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -188,36 +188,31 @@ print (E[1]-E[0])
 #
 # Let's now look at the lowest eigenvalues as a function of externally applied flux, first when there is no charge on the island:
 
-# +
-h.newSweep()
-h.addSweep('phiZ',0.0,1.0,101)
-h.setParameterValue('Qg',0.0)
-
 # Configure diagonalizer
 opts = {"sigma":-2777, "mode":"normal", "maxiter":None, "tol":0}
 h.setDiagConfig(sparse=True, sparsesolveropts=opts)
-
-# Do the sweep
-sweep = h.paramSweep(timesweep=True)
-# -
-
-x,sweep_p,v = h.getSweep(sweep,'phiZ',{})
+h.setParameterValue('Qg', 0.0)
+sweep_config = h.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('phiZ')
+sweep_p = sweep.getNumericalOutput('phiZ')
 for i in range(5):
-    y = sweep_p[i] - sweep_p[0]
+    y = sweep_p.T[i] - sweep_p.T[0]
     plt.plot(x,y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
 
 # Now let's look at the spectra when there is half a Cooper-pair's worth of offset charge on the island:
 
-h.newSweep()
-h.addSweep('phiZ', 0.0, 1.0, 101)
 h.setParameterValue('Qg', 0.5)
-sweep = h.paramSweep(timesweep=True)
-
-x, sweep_p, v = h.getSweep(sweep, 'phiZ', {})
+sweep_config = h.newSweepConfig()
+sweep_config.add('phiZ', np.linspace(0.0, 1.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('phiZ')
+sweep_p = sweep.getNumericalOutput('phiZ')
 for i in range(5):
-    y = sweep_p[i] - sweep_p[0]
+    y = sweep_p.T[i] - sweep_p.T[0]
     plt.plot(x, y)
 plt.xlabel("$\\Phi_{Z}$ ($\\Phi_0$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -226,14 +221,14 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 #
 # Now we sweep the charge offset applied to the island:
 
-h.newSweep()
-h.addSweep('Qg', 0.0, 1.0, 101)
 h.setParameterValue('phiZ', 0.5)
-sweep = h.paramSweep(timesweep=True)
-
-x, sweep_q, v = h.getSweep(sweep, 'Qg', {})
+sweep_config = h.newSweepConfig()
+sweep_config.add('Qg', np.linspace(0.0, 1.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('Qg')
+sweep_q = sweep.getNumericalOutput('Qg')
 for i in range(3):
-    y = sweep_q[i] - sweep_q[0]
+    y = sweep_q.T[i] - sweep_q.T[0]
     plt.plot(x, y)
 plt.xlabel("$Q_g$ ($2e$)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -242,14 +237,14 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 #
 # Now we vary the capacitance of the charging island:
 
-h.newSweep()
-h.addSweep('Cg2', 0.0, 100.0, 101)
 h.setParameterValues('phiZ', 0.5, 'Qg', 0.0)
-sweep = h.paramSweep(timesweep=True)
-
-x,sweep_c,v = h.getSweep(sweep,'Cg2',{})
+sweep_config = h.newSweepConfig()
+sweep_config.add('Cg2', np.linspace(0.0, 100.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('Cg2')
+sweep_c = sweep.getNumericalOutput('Cg2')
 for i in range(5):
-    y = sweep_c[i] - sweep_c[0]
+    y = sweep_c.T[i] - sweep_c.T[0]
     plt.plot(x,y)
 plt.xlabel("$C_{g2}$ (pF)")
 plt.ylabel("$E_{g,i}$ (GHz)")
@@ -258,14 +253,14 @@ plt.ylabel("$E_{g,i}$ (GHz)")
 #
 # Now we look at the dependence of the spectrum on the shunt capacitor:
 
-h.newSweep()
-h.addSweep('Csh', 0.0, 100.0, 101)
 h.setParameterValues('phiZ', 0.5, 'Qg', 0.0, 'Cg2', 20.0)
-sweep = h.paramSweep(timesweep=True)
-
-x,sweep_c,v = h.getSweep(sweep,'Csh',{})
+sweep_config = h.newSweepConfig()
+sweep_config.add('Csh', np.linspace(0.0, 100.0, 101))
+sweep = h.runSweep(sweep_config)
+x = sweep.getInputPoints('Csh')
+sweep_c = sweep.getNumericalOutput('Csh')
 for i in range(5):
-    y = sweep_c[i] - sweep_c[0]
+    y = sweep_c.T[i] - sweep_c.T[0]
     plt.plot(x,y)
 plt.xlabel("$C_{sh}$ (pF)")
 plt.ylabel("$E_{g,i}$ (GHz)")

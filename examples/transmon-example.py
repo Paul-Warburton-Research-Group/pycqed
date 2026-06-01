@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -40,3 +40,5 @@ E = hamil.getHamiltonian().eigenenergies()
 print("fge =", E[1] - E[0])
 print("fef =", E[2] - E[1])
 print(E[3] - E[2])
+
+
